@@ -204,12 +204,12 @@ export const createAnalysis = async (documentIds: string[]) => {
 };
 
 // Update analysis results
-export const updateAnalysisResults = async (analysisId: string, arguments: any) => {
+export const updateAnalysisResults = async (analysisId: string, analysisArgs: any) => {
   try {
     const { error } = await supabase
       .from('analyses')
       .update({
-        arguments: arguments,
+        arguments: analysisArgs,
         status: 'completed'
       })
       .eq('id', analysisId);

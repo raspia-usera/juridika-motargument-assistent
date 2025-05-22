@@ -6,6 +6,18 @@ import { extractDocumentContent } from './supabase';
 // Initialize PDF.js worker
 pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.js`;
 
+// Upload document to storage
+export const uploadDocument = async (file: File): Promise<string | null> => {
+  try {
+    // Import dynamically to avoid circular dependencies
+    const { uploadDocument: supabaseUploadDocument } = await import('./supabase');
+    return await supabaseUploadDocument(file);
+  } catch (error) {
+    console.error('Error uploading document:', error);
+    return null;
+  }
+};
+
 // Process different document types
 export const processDocument = async (file: File, documentId: string): Promise<boolean> => {
   try {
