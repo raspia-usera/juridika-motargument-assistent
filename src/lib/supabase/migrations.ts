@@ -5,19 +5,22 @@ import { supabase } from './client';
 export const setupSupabase = async () => {
   try {
     // Create sessions table if it doesn't exist
-    await supabase.rpc('create_sessions_table_if_not_exists').catch(error => {
-      console.error('Could not create sessions table:', error);
-    });
+    const sessionsResponse = await supabase.rpc('create_sessions_table_if_not_exists');
+    if (sessionsResponse.error) {
+      console.error('Could not create sessions table:', sessionsResponse.error);
+    }
 
     // Create documents table if it doesn't exist
-    await supabase.rpc('create_documents_table_if_not_exists').catch(error => {
-      console.error('Could not create documents table:', error);
-    });
+    const documentsResponse = await supabase.rpc('create_documents_table_if_not_exists');
+    if (documentsResponse.error) {
+      console.error('Could not create documents table:', documentsResponse.error);
+    }
 
     // Create users table if it doesn't exist
-    await supabase.rpc('create_users_table_if_not_exists').catch(error => {
-      console.error('Could not create users table:', error);
-    });
+    const usersResponse = await supabase.rpc('create_users_table_if_not_exists');
+    if (usersResponse.error) {
+      console.error('Could not create users table:', usersResponse.error);
+    }
 
     console.log('Supabase setup completed');
     return true;
