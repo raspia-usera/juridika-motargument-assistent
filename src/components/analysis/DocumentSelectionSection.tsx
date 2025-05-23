@@ -1,7 +1,7 @@
 
 import React from 'react';
-import { Button } from '@/components/ui/button';
-import DocumentSelector from '@/components/DocumentSelector';
+import DocumentList from '@/components/analysis/DocumentList';
+import ActionButtons from '@/components/analysis/ActionButtons';
 import { DocumentItem } from '@/lib/supabase/types';
 
 interface DocumentSelectionSectionProps {
@@ -23,28 +23,19 @@ const DocumentSelectionSection: React.FC<DocumentSelectionSectionProps> = ({
 }) => {
   return (
     <div className="juridika-card mb-8">
-      {loading ? (
-        <div className="p-8 text-center text-juridika-gray">
-          Laddar dokument...
-        </div>
-      ) : (
-        <>
-          <DocumentSelector 
-            documents={documents}
-            selectedDocuments={selectedDocuments}
-            onSelect={onSelect}
-          />
-          
-          <div className="mt-6 flex justify-end">
-            <Button
-              onClick={onAnalyze}
-              className="juridika-btn-primary"
-              disabled={selectedDocuments.length === 0 || analyzing}
-            >
-              {analyzing ? 'Analyserar...' : 'Analysera valda dokument'}
-            </Button>
-          </div>
-        </>
+      <DocumentList
+        documents={documents}
+        selectedDocuments={selectedDocuments}
+        onSelect={onSelect}
+        loading={loading}
+      />
+      
+      {!loading && (
+        <ActionButtons
+          onAnalyze={onAnalyze}
+          analyzing={analyzing}
+          disabled={selectedDocuments.length === 0}
+        />
       )}
     </div>
   );

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
@@ -15,7 +14,6 @@ const Analyze = () => {
   const { analyzing, results, pdfUrl, startAnalysis } = useDocumentAnalysis();
   const [selectedDocuments, setSelectedDocuments] = useState<string[]>([]);
 
-  // Handle document selection
   const handleDocumentSelect = (documentId: string) => {
     setSelectedDocuments(prev => {
       if (prev.includes(documentId)) {
@@ -26,12 +24,10 @@ const Analyze = () => {
     });
   };
 
-  // Start analysis
   const handleAnalyze = () => {
     startAnalysis(selectedDocuments);
   };
 
-  // Download PDF report
   const handleDownloadPdf = () => {
     if (results) {
       downloadPdfReport(results, 'juridisk-analys.pdf');
