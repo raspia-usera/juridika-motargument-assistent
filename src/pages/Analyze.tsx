@@ -8,11 +8,12 @@ import ArgumentCard from '@/components/ArgumentCard';
 import { Button } from '@/components/ui/button';
 import { getSessionDocuments, getDocumentById, createAnalysis, updateAnalysisResults } from '@/lib/supabase';
 import { generateCounterarguments } from '@/lib/documentProcessor';
+import { generatePdfReport, downloadPdfReport } from '@/lib/pdfExport';
 
 interface Document {
   id: string;
-  file_name: string;
-  file_type: string;
+  filename: string;
+  mimetype: string;
   created_at: string;
   content?: string;
 }
@@ -36,14 +37,20 @@ const Analyze = () => {
   const [loading, setLoading] = useState(true);
   const [analyzing, setAnalyzing] = useState(false);
   const [results, setResults] = useState<AnalysisResult | null>(null);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const navigate = useNavigate();
 
   // Load documents on component mount
   useEffect(() => {
     const loadDocuments = async () => {
-      const docs = await getSessionDocuments();
-      setDocuments(docs);
-      setLoading(false);
+      try {
+        const docs = await getSessionDocuments();
+        setDocuments(docs || []);
+      } catch (error) {
+        console.error('Failed to load documents:', error);
+      } finally {
+        setLoading(false);
+      }
     };
     
     loadDocuments();
@@ -66,6 +73,7 @@ const Analyze = () => {
     
     setAnalyzing(true);
     setResults(null);
+    setPdfUrl(null);
     
     try {
       // Get content of selected documents
@@ -99,10 +107,21 @@ const Analyze = () => {
       
       // Set results
       setResults(analysisResults);
+      
+      // Generate PDF
+      const pdfDataUrl = generatePdfReport(analysisResults);
+      setPdfUrl(pdfDataUrl);
     } catch (error) {
       console.error('Analysis error:', error);
     } finally {
       setAnalyzing(false);
+    }
+  };
+
+  // Download PDF report
+  const handleDownloadPdf = () => {
+    if (results) {
+      downloadPdfReport(results, 'juridisk-analys.pdf');
     }
   };
 
@@ -174,9 +193,30 @@ const Analyze = () => {
                   ))}
                 </div>
                 
-                <div className="juridika-card mt-8 p-4 bg-juridika-softpurple/10">
-                  <p className="text-sm text-juridika-charcoal">
+                <div className="juridika-card mt-8">
+                  {pdfUrl && (
+                    <div className="flex flex-col items-center p-4">
+                      <h3 className="text-lg font-medium mb-4">PDF-rapport</h3>
+                      <div className="mb-4">
+                        <iframe 
+                          src={pdfUrl} 
+                          className="border rounded w-full"
+                          style={{ height: '400px' }}
+                          title="PDF-förhandsgranskning"
+                        />
+                      </div>
+                      <Button 
+                        onClick={handleDownloadPdf}
+                        className="juridika-btn-secondary"
+                      >
+                        Ladda ner PDF-rapport
+                      </Button>
+                    </div>
+                  )}
+                  
+                  <p className="text-sm text-juridika-charcoal mt-4 p-4 bg-juridika-softpurple/10">
                     <strong>OBS:</strong> Detta är en testversion. Resultaten bör alltid granskas av en kvalificerad jurist.
+                    Temporär anonym åtkomst används för testning. I produktion kommer striktare behörighetsregler att tillämpas.
                   </p>
                 </div>
               </div>

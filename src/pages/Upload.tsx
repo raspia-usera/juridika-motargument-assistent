@@ -6,13 +6,13 @@ import Footer from '@/components/Footer';
 import DocumentUploader from '@/components/DocumentUploader';
 import { Button } from '@/components/ui/button';
 import { getSessionDocuments } from '@/lib/supabase';
-import DocumentSelector from '@/components/DocumentSelector';
 import { setupSupabase } from '@/lib/supabase';
+import { useToast } from '@/hooks/use-toast';
 
 interface Document {
   id: string;
-  file_name: string;
-  file_type: string;
+  filename: string;
+  mimetype: string;
   created_at: string;
 }
 
@@ -20,12 +20,28 @@ const Upload = () => {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const { toast } = useToast();
   
   // Load documents on component mount
   useEffect(() => {
     const initializeApp = async () => {
-      // Initialize Supabase tables and storage
-      await setupSupabase();
+      try {
+        // Initialize Supabase tables and storage
+        const setupSuccess = await setupSupabase();
+        
+        if (setupSuccess) {
+          console.log('Supabase setup successful');
+        } else {
+          console.error('Supabase setup failed');
+          toast({
+            title: "Anslutningsfel",
+            description: "Kunde inte ansluta till databasen. Vissa funktioner kanske inte fungerar korrekt.",
+            variant: "destructive",
+          });
+        }
+      } catch (error) {
+        console.error('Error initializing app:', error);
+      }
       
       // Load documents
       await loadDocuments();
@@ -33,17 +49,26 @@ const Upload = () => {
     };
     
     initializeApp();
-  }, []);
+  }, [toast]);
   
   // Load user's documents
   const loadDocuments = async () => {
-    const docs = await getSessionDocuments();
-    setDocuments(docs);
+    try {
+      const docs = await getSessionDocuments();
+      setDocuments(docs || []);
+    } catch (error) {
+      console.error('Failed to load documents:', error);
+    }
   };
   
   // Handle upload complete
   const handleUploadComplete = async (documentId: string) => {
     await loadDocuments();
+    
+    toast({
+      title: "Uppladdning klar",
+      description: "Dokumentet har laddats upp och behandlats",
+    });
   };
   
   // Navigate to analyze page
@@ -92,8 +117,8 @@ const Upload = () => {
                             key={doc.id}
                             className="juridika-card p-3 border"
                           >
-                            <p className="font-medium truncate" title={doc.file_name}>
-                              {doc.file_name}
+                            <p className="font-medium truncate" title={doc.filename}>
+                              {doc.filename}
                             </p>
                             <p className="text-xs text-juridika-gray mt-1">
                               {new Date(doc.created_at).toLocaleString('sv-SE')}
@@ -115,6 +140,13 @@ const Upload = () => {
                   </div>
                 </>
               )}
+            </div>
+            
+            <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-md">
+              <p className="text-sm text-amber-800">
+                <strong>OBS:</strong> För utvecklings- och testningsändamål används temporärt anonym åtkomst.
+                I produktionsmiljö kommer striktare behörighetsregler att implementeras.
+              </p>
             </div>
           </div>
         </div>

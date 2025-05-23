@@ -1,7 +1,7 @@
 
 import mammoth from 'mammoth';
 import { pdfjs } from 'react-pdf';
-import { extractDocumentContent } from './supabase';
+import { supabase } from '@/integrations/supabase/client';
 
 // Initialize PDF.js worker
 pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.js`;
@@ -10,8 +10,40 @@ pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/$
 export const uploadDocument = async (file: File): Promise<string | null> => {
   try {
     // Import dynamically to avoid circular dependencies
-    const { uploadDocument: supabaseUploadDocument } = await import('./supabase');
-    return await supabaseUploadDocument(file);
+    const { getSessionId } = await import('./supabase');
+    const sessionId = await getSessionId();
+    
+    if (!sessionId) {
+      throw new Error('No session ID available');
+    }
+    
+    // Upload to storage
+    const filePath = `${sessionId}/${Date.now()}_${file.name}`;
+    const { error: uploadError } = await supabase.storage
+      .from('documents')
+      .upload(filePath, file);
+      
+    if (uploadError) throw uploadError;
+
+    // Create document record
+    const { data, error: insertError } = await supabase
+      .from('documents')
+      .insert({
+        session_id: sessionId,
+        filename: file.name,
+        mimetype: file.type,
+        storage_path: filePath,
+      })
+      .select('id')
+      .single();
+      
+    if (insertError) throw insertError;
+    
+    // Process document to extract text
+    const documentId = data.id;
+    await processDocument(file, documentId);
+    
+    return documentId;
   } catch (error) {
     console.error('Error uploading document:', error);
     return null;
@@ -46,6 +78,25 @@ export const processDocument = async (file: File, documentId: string): Promise<b
     return await extractDocumentContent(documentId, text);
   } catch (error) {
     console.error('Error processing document:', error);
+    return false;
+  }
+};
+
+// Extract document content and update record
+export const extractDocumentContent = async (documentId: string, content: string) => {
+  try {
+    const { error } = await supabase
+      .from('documents')
+      .update({
+        content: content
+      })
+      .eq('id', documentId);
+      
+    if (error) throw error;
+    
+    return true;
+  } catch (error) {
+    console.error('Error extracting document content:', error);
     return false;
   }
 };
