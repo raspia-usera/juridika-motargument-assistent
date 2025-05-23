@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '@/components/Header';
@@ -8,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { getSessionDocuments } from '@/lib/supabase';
 import { executeMigrations, setupStorage } from '@/lib/supabaseMigrations';
 import { useToast } from '@/hooks/use-toast';
+import { DocumentItem } from '@/lib/supabase/types';
 
 interface Document {
   id: string;
@@ -17,7 +17,7 @@ interface Document {
 }
 
 const Upload = () => {
-  const [documents, setDocuments] = useState<Document[]>([]);
+  const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const { toast } = useToast();

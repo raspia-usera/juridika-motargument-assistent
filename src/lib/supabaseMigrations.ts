@@ -1,5 +1,5 @@
 
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from './supabase/client';
 
 // Execute all migrations in sequence when the app starts
 export const executeMigrations = async () => {
@@ -108,20 +108,29 @@ export const executeMigrations = async () => {
       $$ LANGUAGE plpgsql;
     `;
     
-    // Execute function creations
-    const { error: sessionsError } = await supabase.rpc('execute_sql', { sql_statement: createSessionsFunc });
-    if (sessionsError) console.error('Error creating sessions function:', sessionsError);
+    // Execute creation of these functions
+    await supabase.rpc('execute_sql', { sql_statement: createSessionsFunc }).catch(err => 
+      console.error('Error creating sessions function:', err)
+    );
     
-    const { error: documentsError } = await supabase.rpc('execute_sql', { sql_statement: createDocumentsFunc });
-    if (documentsError) console.error('Error creating documents function:', documentsError);
+    await supabase.rpc('execute_sql', { sql_statement: createDocumentsFunc }).catch(err => 
+      console.error('Error creating documents function:', err)
+    );
     
-    const { error: usersError } = await supabase.rpc('execute_sql', { sql_statement: createUsersFunc });
-    if (usersError) console.error('Error creating users function:', usersError);
+    await supabase.rpc('execute_sql', { sql_statement: createUsersFunc }).catch(err => 
+      console.error('Error creating users function:', err)
+    );
     
     // Now call the functions to ensure tables exist
-    await supabase.rpc('create_sessions_table_if_not_exists');
-    await supabase.rpc('create_documents_table_if_not_exists');
-    await supabase.rpc('create_users_table_if_not_exists');
+    await supabase.rpc('create_sessions_table_if_not_exists').catch(err => 
+      console.error('Error creating sessions table:', err)
+    );
+    await supabase.rpc('create_documents_table_if_not_exists').catch(err => 
+      console.error('Error creating documents table:', err)
+    );
+    await supabase.rpc('create_users_table_if_not_exists').catch(err => 
+      console.error('Error creating users table:', err)
+    );
     
     console.log('Migrations completed successfully!');
     return true;

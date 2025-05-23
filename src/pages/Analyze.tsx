@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '@/components/Header';
@@ -10,28 +9,7 @@ import { getSessionDocuments, getDocumentById, createAnalysis, updateAnalysisRes
 import { generateCounterarguments } from '@/lib/documentProcessor';
 import { generatePdfReport, downloadPdfReport } from '@/lib/pdfExport';
 import { useToast } from '@/hooks/use-toast';
-
-// Define our own Document interface to avoid conflicts
-interface DocumentItem {
-  id: string;
-  filename: string;
-  mimetype: string;
-  created_at: string;
-  content?: string;
-}
-
-interface Claim {
-  claim: string;
-  counterarguments: {
-    argument: string;
-    strength: number;
-    references: string[];
-  }[];
-}
-
-interface AnalysisResult {
-  claims: Claim[];
-}
+import { DocumentItem, AnalysisResult } from '@/lib/supabase/types';
 
 const Analyze = () => {
   const [documents, setDocuments] = useState<DocumentItem[]>([]);

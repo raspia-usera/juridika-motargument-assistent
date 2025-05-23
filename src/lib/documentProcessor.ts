@@ -1,7 +1,8 @@
 
 import mammoth from 'mammoth';
 import { pdfjs } from 'react-pdf';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from './supabase';
+import { extractDocumentContent, getSessionId } from './supabase';
 
 // Initialize PDF.js worker
 pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.js`;
@@ -9,8 +10,6 @@ pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/$
 // Upload document to storage
 export const uploadDocument = async (file: File): Promise<string | null> => {
   try {
-    // Import dynamically to avoid circular dependencies
-    const { getSessionId, extractDocumentContent } = await import('./supabase');
     const sessionId = await getSessionId();
     
     if (!sessionId) {
@@ -79,7 +78,6 @@ export const processDocument = async (file: File, documentId: string): Promise<b
     }
     
     // Update document with extracted content
-    const { extractDocumentContent } = await import('./supabase');
     return await extractDocumentContent(documentId, text);
   } catch (error) {
     console.error('Error processing document:', error);
