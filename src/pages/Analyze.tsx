@@ -9,8 +9,10 @@ import { Button } from '@/components/ui/button';
 import { getSessionDocuments, getDocumentById, createAnalysis, updateAnalysisResults } from '@/lib/supabase';
 import { generateCounterarguments } from '@/lib/documentProcessor';
 import { generatePdfReport, downloadPdfReport } from '@/lib/pdfExport';
+import { useToast } from '@/hooks/use-toast';
 
-interface Document {
+// Define our own Document interface to avoid conflicts
+interface DocumentItem {
   id: string;
   filename: string;
   mimetype: string;
@@ -32,13 +34,14 @@ interface AnalysisResult {
 }
 
 const Analyze = () => {
-  const [documents, setDocuments] = useState<Document[]>([]);
+  const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [selectedDocuments, setSelectedDocuments] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [analyzing, setAnalyzing] = useState(false);
   const [results, setResults] = useState<AnalysisResult | null>(null);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   // Load documents on component mount
   useEffect(() => {
@@ -48,13 +51,18 @@ const Analyze = () => {
         setDocuments(docs || []);
       } catch (error) {
         console.error('Failed to load documents:', error);
+        toast({
+          title: "Laddningsfel",
+          description: "Kunde inte ladda dokument. Försök igen senare.",
+          variant: "destructive",
+        });
       } finally {
         setLoading(false);
       }
     };
     
     loadDocuments();
-  }, []);
+  }, [toast]);
 
   // Handle document selection
   const handleDocumentSelect = (documentId: string) => {
@@ -111,8 +119,18 @@ const Analyze = () => {
       // Generate PDF
       const pdfDataUrl = generatePdfReport(analysisResults);
       setPdfUrl(pdfDataUrl);
+      
+      toast({
+        title: "Analys klar",
+        description: "Analysen har slutförts framgångsrikt.",
+      });
     } catch (error) {
       console.error('Analysis error:', error);
+      toast({
+        title: "Analysfel",
+        description: "Ett fel uppstod under analysen. Försök igen senare.",
+        variant: "destructive",
+      });
     } finally {
       setAnalyzing(false);
     }

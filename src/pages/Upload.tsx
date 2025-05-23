@@ -6,7 +6,7 @@ import Footer from '@/components/Footer';
 import DocumentUploader from '@/components/DocumentUploader';
 import { Button } from '@/components/ui/button';
 import { getSessionDocuments } from '@/lib/supabase';
-import { setupSupabase } from '@/lib/supabase';
+import { executeMigrations, setupStorage } from '@/lib/supabaseMigrations';
 import { useToast } from '@/hooks/use-toast';
 
 interface Document {
@@ -27,20 +27,17 @@ const Upload = () => {
     const initializeApp = async () => {
       try {
         // Initialize Supabase tables and storage
-        const setupSuccess = await setupSupabase();
-        
-        if (setupSuccess) {
-          console.log('Supabase setup successful');
-        } else {
-          console.error('Supabase setup failed');
-          toast({
-            title: "Anslutningsfel",
-            description: "Kunde inte ansluta till databasen. Vissa funktioner kanske inte fungerar korrekt.",
-            variant: "destructive",
-          });
-        }
+        console.log('Setting up database...');
+        await executeMigrations();
+        await setupStorage();
+        console.log('Database setup completed');
       } catch (error) {
         console.error('Error initializing app:', error);
+        toast({
+          title: "Anslutningsfel",
+          description: "Kunde inte ansluta till databasen. Vissa funktioner kanske inte fungerar korrekt.",
+          variant: "destructive",
+        });
       }
       
       // Load documents
@@ -58,6 +55,11 @@ const Upload = () => {
       setDocuments(docs || []);
     } catch (error) {
       console.error('Failed to load documents:', error);
+      toast({
+        title: "Laddningsfel",
+        description: "Kunde inte ladda dokument. Försök igen senare.",
+        variant: "destructive",
+      });
     }
   };
   

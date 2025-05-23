@@ -10,7 +10,7 @@ pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/$
 export const uploadDocument = async (file: File): Promise<string | null> => {
   try {
     // Import dynamically to avoid circular dependencies
-    const { getSessionId } = await import('./supabase');
+    const { getSessionId, extractDocumentContent } = await import('./supabase');
     const sessionId = await getSessionId();
     
     if (!sessionId) {
@@ -40,8 +40,12 @@ export const uploadDocument = async (file: File): Promise<string | null> => {
     if (insertError) throw insertError;
     
     // Process document to extract text
-    const documentId = data.id;
-    await processDocument(file, documentId);
+    const documentId = data?.id;
+    if (documentId) {
+      await processDocument(file, documentId);
+    } else {
+      throw new Error('No document ID returned');
+    }
     
     return documentId;
   } catch (error) {
@@ -75,28 +79,10 @@ export const processDocument = async (file: File, documentId: string): Promise<b
     }
     
     // Update document with extracted content
+    const { extractDocumentContent } = await import('./supabase');
     return await extractDocumentContent(documentId, text);
   } catch (error) {
     console.error('Error processing document:', error);
-    return false;
-  }
-};
-
-// Extract document content and update record
-export const extractDocumentContent = async (documentId: string, content: string) => {
-  try {
-    const { error } = await supabase
-      .from('documents')
-      .update({
-        content: content
-      })
-      .eq('id', documentId);
-      
-    if (error) throw error;
-    
-    return true;
-  } catch (error) {
-    console.error('Error extracting document content:', error);
     return false;
   }
 };

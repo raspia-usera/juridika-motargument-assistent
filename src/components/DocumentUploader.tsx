@@ -1,7 +1,7 @@
 
 import React, { useCallback, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { uploadDocument, processDocument } from '@/lib/documentProcessor';
+import { uploadDocument } from '@/lib/documentProcessor';
 import { Button } from '@/components/ui/button';
 import { Upload, File, AlertCircle } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
@@ -51,13 +51,6 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({ onUploadComplete })
           throw new Error('Kunde inte ladda upp filen');
         }
 
-        // Process document to extract text
-        const processed = await processDocument(file, documentId);
-        
-        if (!processed) {
-          throw new Error('Kunde inte bearbeta filen');
-        }
-
         clearInterval(progressInterval);
         setProgress(100);
 
@@ -75,6 +68,12 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({ onUploadComplete })
       setError(err instanceof Error ? err.message : 'Ett oväntat fel inträffade');
       setUploading(false);
       setProgress(0);
+
+      toast({
+        title: 'Uppladdningsfel',
+        description: err instanceof Error ? err.message : 'Ett oväntat fel inträffade',
+        variant: "destructive",
+      });
     }
   }, [onUploadComplete, toast]);
 
