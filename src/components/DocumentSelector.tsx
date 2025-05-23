@@ -3,16 +3,10 @@ import React from 'react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent } from '@/components/ui/card';
 import { FileText, File, FileImage } from 'lucide-react';
-
-interface Document {
-  id: string;
-  file_name: string;
-  file_type: string;
-  created_at: string;
-}
+import { DocumentItem } from '@/lib/supabase/types';
 
 interface DocumentSelectorProps {
-  documents: Document[];
+  documents: DocumentItem[];
   selectedDocuments: string[];
   onSelect: (id: string) => void;
 }
@@ -71,16 +65,16 @@ const DocumentSelector: React.FC<DocumentSelectorProps> = ({
                 />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-start justify-between mb-2">
-                    {getFileIcon(doc.file_type)}
+                    {getFileIcon(doc.mimetype)}
                     <span className="text-xs text-juridika-gray">
                       {formatDate(doc.created_at)}
                     </span>
                   </div>
-                  <p className="font-medium text-juridika-charcoal truncate" title={doc.file_name}>
-                    {doc.file_name}
+                  <p className="font-medium text-juridika-charcoal truncate" title={doc.filename}>
+                    {doc.filename}
                   </p>
                   <p className="text-xs text-juridika-gray">
-                    {doc.file_type.split('/')[1]?.toUpperCase() || doc.file_type}
+                    {doc.mimetype.split('/')[1]?.toUpperCase() || doc.mimetype}
                   </p>
                 </div>
               </CardContent>
