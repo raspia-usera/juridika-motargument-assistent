@@ -1,8 +1,8 @@
 
 import React from 'react';
-import { Button } from '@/components/ui/button';
 import ArgumentCard from '@/components/ArgumentCard';
 import { AnalysisResult } from '@/lib/supabase/types';
+import PDFViewer from '@/components/analysis/PDFViewer';
 
 interface AnalysisResultsSectionProps {
   results: AnalysisResult;
@@ -33,22 +33,12 @@ const AnalysisResultsSection: React.FC<AnalysisResultsSectionProps> = ({
       
       <div className="juridika-card mt-8">
         {pdfUrl && (
-          <div className="flex flex-col items-center p-4">
-            <h3 className="text-lg font-medium mb-4">PDF-rapport</h3>
-            <div className="mb-4">
-              <iframe 
-                src={pdfUrl} 
-                className="border rounded w-full"
-                style={{ height: '400px' }}
-                title="PDF-förhandsgranskning"
-              />
-            </div>
-            <Button 
-              onClick={onDownloadPdf}
-              className="juridika-btn-secondary"
-            >
-              Ladda ner PDF-rapport
-            </Button>
+          <div className="p-4">
+            <h3 className="text-lg font-medium mb-4 text-center">PDF-rapport</h3>
+            <PDFViewer 
+              pdfUrl={pdfUrl}
+              onDownload={onDownloadPdf}
+            />
           </div>
         )}
         
