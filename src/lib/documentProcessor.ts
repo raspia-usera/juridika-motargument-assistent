@@ -1,4 +1,3 @@
-
 import mammoth from 'mammoth';
 import { pdfjs } from 'react-pdf';
 import { supabase } from './supabase';
@@ -7,22 +6,81 @@ import { extractDocumentContent, getSessionId } from './supabase';
 // Initialize PDF.js worker
 pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.js`;
 
-// Upload document to storage
+// Enhanced file validation with Swedish error messages
+export const validateFile = (file: File): { isValid: boolean; error?: string } => {
+  const maxSize = 50 * 1024 * 1024; // 50MB
+  const supportedTypes = [
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/rtf',
+    'text/html',
+    'text/plain'
+  ];
+
+  if (!file) {
+    return { isValid: false, error: 'Ingen fil vald' };
+  }
+
+  if (file.size === 0) {
+    return { isValid: false, error: 'Filen är tom. Välj en fil med innehåll.' };
+  }
+
+  if (file.size > maxSize) {
+    return { isValid: false, error: 'Filen är för stor. Maximal storlek är 50MB.' };
+  }
+
+  if (!supportedTypes.includes(file.type)) {
+    return { 
+      isValid: false, 
+      error: 'Filformat stöds inte. Stödda format: PDF, DOCX, RTF, HTML, TXT' 
+    };
+  }
+
+  // Check for problematic filename characters
+  const problematicChars = /[<>:"|?*]/;
+  if (problematicChars.test(file.name)) {
+    return { 
+      isValid: false, 
+      error: 'Filnamnet innehåller ogiltiga tecken. Undvik < > : " | ? *' 
+    };
+  }
+
+  return { isValid: true };
+};
+
+// Upload document with enhanced error handling
 export const uploadDocument = async (file: File): Promise<string | null> => {
   try {
+    // Validate file first
+    const validation = validateFile(file);
+    if (!validation.isValid) {
+      console.error('File validation failed:', validation.error);
+      throw new Error(validation.error);
+    }
+
     const sessionId = await getSessionId();
-    
     if (!sessionId) {
-      throw new Error('No session ID available');
+      throw new Error('Kunde inte skapa session. Försök ladda om sidan.');
     }
     
+    console.log('Starting upload for file:', file.name, 'Size:', file.size, 'Type:', file.type);
+    
+    // Sanitize filename for storage
+    const sanitizedName = file.name.replace(/[<>:"|?*]/g, '_');
+    const filePath = `${sessionId}/${Date.now()}_${sanitizedName}`;
+    
     // Upload to storage
-    const filePath = `${sessionId}/${Date.now()}_${file.name}`;
     const { error: uploadError } = await supabase.storage
       .from('documents')
       .upload(filePath, file);
       
-    if (uploadError) throw uploadError;
+    if (uploadError) {
+      console.error('Storage upload error:', uploadError);
+      throw new Error('Kunde inte ladda upp filen till lagring. Försök igen.');
+    }
+
+    console.log('File uploaded to storage successfully:', filePath);
 
     // Create document record
     const { data, error: insertError } = await supabase
@@ -36,16 +94,22 @@ export const uploadDocument = async (file: File): Promise<string | null> => {
       .select('id')
       .single();
       
-    if (insertError) throw insertError;
-    
-    // Process document to extract text
-    const documentId = data?.id;
-    if (documentId) {
-      await processDocument(file, documentId);
-    } else {
-      throw new Error('No document ID returned');
+    if (insertError) {
+      console.error('Database insert error:', insertError);
+      throw new Error('Kunde inte spara dokumentinformation. Försök igen.');
     }
     
+    const documentId = data?.id;
+    if (!documentId) {
+      throw new Error('Inget dokument-ID returnerades från databasen.');
+    }
+
+    console.log('Document record created with ID:', documentId);
+    
+    // Process document to extract text
+    await processDocument(file, documentId);
+    
+    console.log('Document processed successfully:', documentId);
     return documentId;
   } catch (error) {
     console.error('Error uploading document:', error);
@@ -53,11 +117,13 @@ export const uploadDocument = async (file: File): Promise<string | null> => {
   }
 };
 
-// Process different document types
+// Enhanced document processing with better error handling
 export const processDocument = async (file: File, documentId: string): Promise<boolean> => {
   try {
     const fileType = file.type;
     let text = '';
+    
+    console.log('Processing document:', file.name, 'Type:', fileType);
     
     // Extract text based on file type
     if (fileType === 'application/pdf') {
@@ -74,65 +140,128 @@ export const processDocument = async (file: File, documentId: string): Promise<b
     } else if (fileType === 'text/plain') {
       text = await file.text();
     } else {
-      throw new Error('Filtypen stöds inte');
+      throw new Error('Filtypen stöds inte för textextrahering');
     }
     
+    if (!text.trim()) {
+      console.warn('No text extracted from document:', file.name);
+      text = '[Ingen text kunde extraheras från detta dokument]';
+    }
+    
+    console.log('Text extracted, length:', text.length);
+    
     // Update document with extracted content
-    return await extractDocumentContent(documentId, text);
+    const success = await extractDocumentContent(documentId, text);
+    if (!success) {
+      throw new Error('Kunde inte spara extraherad text');
+    }
+    
+    return true;
   } catch (error) {
     console.error('Error processing document:', error);
+    
+    // Try to save error information
+    try {
+      await extractDocumentContent(documentId, `[Fel vid textextrahering: ${error instanceof Error ? error.message : 'Okänt fel'}]`);
+    } catch (saveError) {
+      console.error('Could not save error information:', saveError);
+    }
+    
     return false;
   }
 };
 
-// Extract text from PDF
+// Enhanced PDF text extraction with better error handling
 const extractPdfText = async (file: File): Promise<string> => {
-  const arrayBuffer = await file.arrayBuffer();
-  const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
-  let text = '';
-  
-  for (let i = 1; i <= pdf.numPages; i++) {
-    const page = await pdf.getPage(i);
-    const content = await page.getTextContent();
-    const pageText = content.items
-      .map((item: any) => item.str)
-      .join(' ');
-    text += pageText + '\n\n';
+  try {
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
+    let text = '';
+    
+    for (let i = 1; i <= pdf.numPages; i++) {
+      try {
+        const page = await pdf.getPage(i);
+        const content = await page.getTextContent();
+        const pageText = content.items
+          .map((item: any) => item.str)
+          .join(' ');
+        text += pageText + '\n\n';
+      } catch (pageError) {
+        console.warn(`Error extracting text from page ${i}:`, pageError);
+        text += `[Kunde inte läsa sida ${i}]\n\n`;
+      }
+    }
+    
+    if (!text.trim()) {
+      throw new Error('Kunde inte extrahera text från PDF:en. Prova att spara den som vanlig text och ladda upp igen.');
+    }
+    
+    return text;
+  } catch (error) {
+    console.error('PDF extraction error:', error);
+    throw new Error('Kunde inte läsa PDF-filen. Kontrollera att den inte är lösenordsskyddad eller skadad.');
   }
-  
-  return text;
 };
 
-// Extract text from Word documents
+// Enhanced Word document extraction
 const extractWordText = async (file: File): Promise<string> => {
-  const arrayBuffer = await file.arrayBuffer();
-  const result = await mammoth.extractRawText({ arrayBuffer });
-  return result.value;
+  try {
+    const arrayBuffer = await file.arrayBuffer();
+    const result = await mammoth.extractRawText({ arrayBuffer });
+    
+    if (!result.value.trim()) {
+      throw new Error('Kunde inte extrahera text från Word-dokumentet.');
+    }
+    
+    return result.value;
+  } catch (error) {
+    console.error('Word extraction error:', error);
+    throw new Error('Kunde inte läsa Word-dokumentet. Kontrollera att filen inte är skadad.');
+  }
 };
 
-// Extract text from RTF (simplified)
+// Enhanced RTF extraction
 const extractRtfText = async (file: File): Promise<string> => {
-  // This is a simplified approach - in a production app you'd use a proper RTF parser
-  const text = await file.text();
-  // Basic RTF cleaning - removes RTF control sequences
-  return text.replace(/\{[^\}]*\}|\\[^\\]+/g, ' ').replace(/\s+/g, ' ').trim();
+  try {
+    const text = await file.text();
+    const cleaned = text.replace(/\{[^\}]*\}|\\[^\\]+/g, ' ').replace(/\s+/g, ' ').trim();
+    
+    if (!cleaned) {
+      throw new Error('Kunde inte extrahera text från RTF-filen.');
+    }
+    
+    return cleaned;
+  } catch (error) {
+    console.error('RTF extraction error:', error);
+    throw new Error('Kunde inte läsa RTF-filen.');
+  }
 };
 
-// Extract text from HTML
+// Enhanced HTML extraction
 const extractHtmlText = async (file: File): Promise<string> => {
-  const text = await file.text();
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(text, 'text/html');
-  return doc.body.textContent || '';
+  try {
+    const text = await file.text();
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(text, 'text/html');
+    const extracted = doc.body.textContent || '';
+    
+    if (!extracted.trim()) {
+      throw new Error('Kunde inte extrahera text från HTML-filen.');
+    }
+    
+    return extracted;
+  } catch (error) {
+    console.error('HTML extraction error:', error);
+    throw new Error('Kunde inte läsa HTML-filen.');
+  }
 };
 
-// Function to generate legal counterarguments using the local model
+// Generate legal counterarguments (keeping existing mock implementation)
 export const generateCounterarguments = async (
   documents: { id: string, content: string }[]
 ): Promise<any> => {
   try {
-    // In a real implementation, this would use a local model or API
-    // For this prototype, we'll generate mock results
+    console.log('Generating counterarguments for', documents.length, 'documents');
     
     // Wait to simulate processing time
     await new Promise(resolve => setTimeout(resolve, 2000));
