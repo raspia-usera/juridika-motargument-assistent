@@ -67,13 +67,38 @@ export default {
 					ring: 'hsl(var(--sidebar-ring))'
 				},
                 juridika: {
-                    charcoal: '#403E43',
-                    gray: '#8E9196',
-                    midgray: '#8A898C',
-                    lightgray: '#C8C8C9',
-                    purple: '#9b87f5',
-                    softpurple: '#E5DEFF',
-                    background: '#F1F1F1',
+                    charcoal: '#1e293b',
+                    gray: '#475569',
+                    midgray: '#64748b',
+                    lightgray: '#cbd5e1',
+                    purple: '#14b8a6',      // Changed to teal
+                    softpurple: '#f0fdfa',  // Changed to soft teal
+                    background: '#fefdf8',  // Warm background
+                },
+                // New teal and warm color palette
+                teal: {
+                    50: '#f0fdfa',
+                    100: '#ccfbf1',
+                    200: '#99f6e4',
+                    300: '#5eead4',
+                    400: '#2dd4bf',
+                    500: '#14b8a6',
+                    600: '#0d9488',
+                    700: '#0f766e',
+                    800: '#115e59',
+                    900: '#134e4a',
+                },
+                amber: {
+                    50: '#fffbeb',
+                    100: '#fef3c7',
+                    200: '#fde68a',
+                    300: '#fcd34d',
+                    400: '#fbbf24',
+                    500: '#f59e0b',
+                    600: '#d97706',
+                    700: '#b45309',
+                    800: '#92400e',
+                    900: '#78350f',
                 }
 			},
 			borderRadius: {
@@ -108,11 +133,22 @@ export default {
                         transform: 'translateY(0)'
                     }
                 },
+                'scale-glow': {
+                    '0%, 100%': { 
+                        transform: 'scale(1)',
+                        filter: 'drop-shadow(0 0 5px rgba(20, 184, 166, 0.3))'
+                    },
+                    '50%': { 
+                        transform: 'scale(1.05)',
+                        filter: 'drop-shadow(0 0 15px rgba(20, 184, 166, 0.5))'
+                    }
+                },
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
 				'accordion-up': 'accordion-up 0.2s ease-out',
                 'fade-in': 'fade-in 0.3s ease-out',
+                'scale-glow': 'scale-glow 2s ease-in-out infinite',
 			}
 		}
 	},

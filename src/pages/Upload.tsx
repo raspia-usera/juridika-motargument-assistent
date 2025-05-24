@@ -1,15 +1,17 @@
-
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import DocumentUploader from '@/components/DocumentUploader';
+import OCRUploader from '@/components/OCRUploader';
+import NJIntegration from '@/components/NJIntegration';
 import { Button } from '@/components/ui/button';
 import { getSessionDocuments } from '@/lib/supabase';
 import { executeMigrations, setupStorage } from '@/lib/supabaseMigrations';
+import { createDocumentFromText } from '@/lib/documentProcessor';
 import { useToast } from '@/hooks/use-toast';
 import { DocumentItem } from '@/lib/supabase/types';
-import { ExternalLink, Database, Upload as UploadIcon, FileText } from 'lucide-react';
+import { Upload as UploadIcon, FileText, Image, Scale, ExternalLink } from 'lucide-react';
 
 const Upload = () => {
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
@@ -78,6 +80,29 @@ const Upload = () => {
     });
   };
   
+  // Handle OCR text extraction
+  const handleOCRComplete = async (text: string, filename: string) => {
+    console.log('OCR completed:', filename, text.length, 'characters');
+    
+    try {
+      const documentId = await createDocumentFromText(text, filename);
+      if (documentId) {
+        await loadDocuments();
+        toast({
+          title: "OCR klar",
+          description: `Text extraherad och sparad som "${filename}"`,
+        });
+      }
+    } catch (error) {
+      console.error('Error saving OCR text:', error);
+      toast({
+        title: "Fel vid sparande",
+        description: "Kunde inte spara den extraherade texten",
+        variant: "destructive",
+      });
+    }
+  };
+  
   // Navigate to analyze page
   const handleContinue = () => {
     navigate('/analyze');
@@ -97,7 +122,7 @@ const Upload = () => {
         <Header />
         <main className="flex-grow flex items-center justify-center">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500 mx-auto mb-4"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-500 mx-auto mb-4"></div>
             <p className="text-slate-600">Initialiserar applikation...</p>
           </div>
         </main>
@@ -115,12 +140,15 @@ const Upload = () => {
           <div className="max-w-5xl mx-auto">
             {/* Header Section */}
             <div className="text-center mb-8">
-              <h1 className="text-3xl font-bold text-slate-800 mb-4">
-                Ladda upp juridiska dokument
-              </h1>
-              <p className="text-lg text-slate-600 max-w-2xl mx-auto">
+              <div className="flex items-center justify-center mb-4">
+                <Scale className="h-12 w-12 juridika-scales mr-4" />
+                <h1 className="text-4xl font-bold text-slate-800">
+                  Ladda upp juridiska dokument
+                </h1>
+              </div>
+              <p className="text-lg text-slate-600 max-w-3xl mx-auto">
                 Ladda upp dina juridiska dokument för analys av motargument och juridiska påståenden. 
-                Stödda format inkluderar PDF, DOCX, RTF, HTML och TXT.
+                Stödja både digitala filer och fotografier av pappersdokument.
               </p>
             </div>
 
@@ -131,56 +159,53 @@ const Upload = () => {
               </div>
             )}
             
-            {/* Upload Section */}
-            <div className="juridika-card mb-8">
-              <div className="flex items-center mb-6">
-                <UploadIcon className="h-6 w-6 text-emerald-600 mr-3" />
-                <h2 className="text-xl font-semibold text-slate-800">
-                  Ladda upp dokument
-                </h2>
+            {/* Upload Sections Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+              {/* Document Upload Section */}
+              <div className="juridika-card">
+                <div className="flex items-center mb-6">
+                  <UploadIcon className="h-6 w-6 text-teal-600 mr-3" />
+                  <h2 className="text-xl font-semibold text-slate-800">
+                    Ladda upp digitala dokument
+                  </h2>
+                </div>
+                <p className="text-slate-600 mb-4 text-sm">
+                  Accepterade format: PDF, Word, RTF, Text och mer
+                </p>
+                <DocumentUploader onUploadComplete={handleUploadComplete} />
               </div>
-              <DocumentUploader onUploadComplete={handleUploadComplete} />
+
+              {/* OCR Upload Section */}
+              <div className="juridika-card">
+                <div className="flex items-center mb-6">
+                  <Image className="h-6 w-6 text-teal-600 mr-3" />
+                  <h2 className="text-xl font-semibold text-slate-800">
+                    Fotografera pappersdokument
+                  </h2>
+                </div>
+                <p className="text-slate-600 mb-4 text-sm">
+                  Stödda format: JPG, PNG, HEIC, BMP, WEBP, PDF och mer
+                </p>
+                <OCRUploader onTextExtracted={handleOCRComplete} />
+              </div>
             </div>
 
             {/* NJ.se Integration Section */}
             <div className="juridika-card mb-8">
               <div className="flex items-center mb-4">
-                <Database className="h-6 w-6 text-emerald-600 mr-3" />
+                <ExternalLink className="h-6 w-6 text-teal-600 mr-3" />
                 <h2 className="text-xl font-semibold text-slate-800">
                   Juridisk databas
                 </h2>
               </div>
-              <div className="bg-slate-50 rounded-lg p-6">
-                <div className="flex items-start space-x-4">
-                  <ExternalLink className="h-8 w-8 text-slate-500 mt-1 flex-shrink-0" />
-                  <div className="flex-1">
-                    <h3 className="font-medium text-slate-800 mb-2">
-                      Norstedts Juridik Integration
-                    </h3>
-                    <p className="text-slate-600 mb-4">
-                      Hämta rättsfall, doktrin och prejudikat direkt från NJ.se för en mer omfattande juridisk analys.
-                    </p>
-                    <Button
-                      onClick={handleNjIntegration}
-                      variant="outline"
-                      className="border-emerald-300 text-emerald-700 hover:bg-emerald-50"
-                    >
-                      <ExternalLink className="h-4 w-4 mr-2" />
-                      Hämta data från NJ.se
-                    </Button>
-                  </div>
-                </div>
-                <div className="mt-4 text-xs text-slate-500 bg-slate-100 rounded p-2">
-                  <strong>Kommande funktion:</strong> Denna integration kommer att möjliggöra automatisk sökning och import av relevanta rättsfall baserat på dina dokument.
-                </div>
-              </div>
+              <NJIntegration />
             </div>
             
             {/* Documents List Section */}
             <div className="juridika-card">
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center">
-                  <FileText className="h-6 w-6 text-emerald-600 mr-3" />
+                  <FileText className="h-6 w-6 text-teal-600 mr-3" />
                   <h2 className="text-xl font-semibold text-slate-800">
                     Uppladdade dokument ({documents.length})
                   </h2>
@@ -207,7 +232,7 @@ const Upload = () => {
                           className="bg-slate-50 border border-slate-200 rounded-lg p-4 hover:border-slate-300 transition-colors"
                         >
                           <div className="flex items-start space-x-3">
-                            <FileText className="h-5 w-5 text-emerald-600 mt-0.5 flex-shrink-0" />
+                            <FileText className="h-5 w-5 text-teal-600 mt-0.5 flex-shrink-0" />
                             <div className="flex-1 min-w-0">
                               <p className="font-medium text-slate-800 truncate" title={doc.filename}>
                                 {doc.filename}

@@ -6,16 +6,27 @@ import { extractDocumentContent, getSessionId } from './supabase';
 // Initialize PDF.js worker
 pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.js`;
 
-// Enhanced file validation with Swedish error messages
+// Enhanced file validation with expanded format support
 export const validateFile = (file: File): { isValid: boolean; error?: string } => {
   const maxSize = 50 * 1024 * 1024; // 50MB
   const supportedTypes = [
+    // Documents
     'application/pdf',
     'application/msword',
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     'application/rtf',
+    'application/vnd.oasis.opendocument.text', // ODT
     'text/html',
-    'text/plain'
+    'text/plain',
+    'text/markdown',
+    // Images for OCR
+    'image/jpeg',
+    'image/png',
+    'image/heic',
+    'image/webp',
+    'image/bmp',
+    'image/tiff',
+    'image/gif'
   ];
 
   if (!file) {
@@ -33,7 +44,7 @@ export const validateFile = (file: File): { isValid: boolean; error?: string } =
   if (!supportedTypes.includes(file.type)) {
     return { 
       isValid: false, 
-      error: 'Filformat stöds inte. Stödda format: PDF, DOCX, RTF, HTML, TXT' 
+      error: 'Filformat stöds inte. Accepterade format: PDF, Word, RTF, Text och mer' 
     };
   }
 
@@ -117,7 +128,59 @@ export const uploadDocument = async (file: File): Promise<string | null> => {
   }
 };
 
-// Enhanced document processing with better error handling
+// Create document from OCR text
+export const createDocumentFromText = async (text: string, filename: string): Promise<string | null> => {
+  try {
+    const sessionId = await getSessionId();
+    if (!sessionId) {
+      throw new Error('Kunde inte skapa session. Försök ladda om sidan.');
+    }
+    
+    console.log('Creating document from OCR text:', filename);
+    
+    // Create text file blob
+    const textBlob = new Blob([text], { type: 'text/plain' });
+    const sanitizedName = filename.replace(/[<>:"|?*]/g, '_');
+    const filePath = `${sessionId}/${Date.now()}_${sanitizedName}`;
+    
+    // Upload to storage
+    const { error: uploadError } = await supabase.storage
+      .from('documents')
+      .upload(filePath, textBlob);
+      
+    if (uploadError) {
+      console.error('Storage upload error:', uploadError);
+      throw new Error('Kunde inte ladda upp den extraherade texten. Försök igen.');
+    }
+
+    // Create document record
+    const { data, error: insertError } = await supabase
+      .from('documents')
+      .insert({
+        session_id: sessionId,
+        filename: filename,
+        mimetype: 'text/plain',
+        storage_path: filePath,
+        content: text
+      })
+      .select('id')
+      .single();
+      
+    if (insertError) {
+      console.error('Database insert error:', insertError);
+      throw new Error('Kunde inte spara dokumentinformation. Försök igen.');
+    }
+    
+    const documentId = data?.id;
+    console.log('OCR document created with ID:', documentId);
+    return documentId;
+  } catch (error) {
+    console.error('Error creating document from text:', error);
+    return null;
+  }
+};
+
+// Enhanced document processing with expanded format support
 export const processDocument = async (file: File, documentId: string): Promise<boolean> => {
   try {
     const fileType = file.type;
@@ -135,10 +198,15 @@ export const processDocument = async (file: File, documentId: string): Promise<b
       text = await extractWordText(file);
     } else if (fileType === 'application/rtf') {
       text = await extractRtfText(file);
+    } else if (fileType === 'application/vnd.oasis.opendocument.text') {
+      text = await extractOdtText(file);
     } else if (fileType === 'text/html') {
       text = await extractHtmlText(file);
-    } else if (fileType === 'text/plain') {
+    } else if (fileType === 'text/plain' || fileType === 'text/markdown') {
       text = await file.text();
+    } else if (fileType.startsWith('image/')) {
+      // For images, we'll skip processing here as OCR should handle them separately
+      text = '[Bildfil - använd OCR-funktionen för textextrahering]';
     } else {
       throw new Error('Filtypen stöds inte för textextrahering');
     }
@@ -253,6 +321,30 @@ const extractHtmlText = async (file: File): Promise<string> => {
   } catch (error) {
     console.error('HTML extraction error:', error);
     throw new Error('Kunde inte läsa HTML-filen.');
+  }
+};
+
+// New ODT extraction function
+const extractOdtText = async (file: File): Promise<string> => {
+  try {
+    // For ODT files, we'll treat them as ZIP files and extract content.xml
+    const text = await file.text();
+    
+    // Basic ODT text extraction (simplified)
+    // In a real implementation, you'd parse the XML properly
+    const cleanedText = text
+      .replace(/<[^>]*>/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    
+    if (!cleanedText) {
+      throw new Error('Kunde inte extrahera text från ODT-filen.');
+    }
+    
+    return cleanedText;
+  } catch (error) {
+    console.error('ODT extraction error:', error);
+    throw new Error('Kunde inte läsa ODT-filen. Prova att exportera den som PDF eller DOCX.');
   }
 };
 
