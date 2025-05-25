@@ -11,30 +11,39 @@ export type Database = {
     Tables: {
       documents: {
         Row: {
+          analysis_mode: string | null
           content: string | null
           created_at: string
           filename: string
           id: string
           mimetype: string
           session_id: string
+          side: string | null
+          side_label: string | null
           storage_path: string
         }
         Insert: {
+          analysis_mode?: string | null
           content?: string | null
           created_at?: string
           filename: string
           id?: string
           mimetype: string
           session_id: string
+          side?: string | null
+          side_label?: string | null
           storage_path: string
         }
         Update: {
+          analysis_mode?: string | null
           content?: string | null
           created_at?: string
           filename?: string
           id?: string
           mimetype?: string
           session_id?: string
+          side?: string | null
+          side_label?: string | null
           storage_path?: string
         }
         Relationships: [

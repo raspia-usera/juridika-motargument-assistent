@@ -60,8 +60,13 @@ export const validateFile = (file: File): { isValid: boolean; error?: string } =
   return { isValid: true };
 };
 
-// Upload document with enhanced error handling
-export const uploadDocument = async (file: File): Promise<string | null> => {
+// Upload document with enhanced error handling and side support
+export const uploadDocument = async (
+  file: File, 
+  side?: 'A' | 'B', 
+  sideLabel?: string,
+  analysisMode: 'single' | 'comparative' = 'single'
+): Promise<string | null> => {
   try {
     // Validate file first
     const validation = validateFile(file);
@@ -75,7 +80,7 @@ export const uploadDocument = async (file: File): Promise<string | null> => {
       throw new Error('Kunde inte skapa session. Försök ladda om sidan.');
     }
     
-    console.log('Starting upload for file:', file.name, 'Size:', file.size, 'Type:', file.type);
+    console.log('Starting upload for file:', file.name, 'Side:', side, 'Size:', file.size, 'Type:', file.type);
     
     // Sanitize filename for storage
     const sanitizedName = file.name.replace(/[<>:"|?*]/g, '_');
@@ -93,7 +98,7 @@ export const uploadDocument = async (file: File): Promise<string | null> => {
 
     console.log('File uploaded to storage successfully:', filePath);
 
-    // Create document record
+    // Create document record with side information
     const { data, error: insertError } = await supabase
       .from('documents')
       .insert({
@@ -101,6 +106,9 @@ export const uploadDocument = async (file: File): Promise<string | null> => {
         filename: file.name,
         mimetype: file.type,
         storage_path: filePath,
+        side: side || null,
+        side_label: sideLabel || null,
+        analysis_mode: analysisMode
       })
       .select('id')
       .single();
@@ -128,15 +136,21 @@ export const uploadDocument = async (file: File): Promise<string | null> => {
   }
 };
 
-// Create document from OCR text
-export const createDocumentFromText = async (text: string, filename: string): Promise<string | null> => {
+// Create document from OCR text with side support
+export const createDocumentFromText = async (
+  text: string, 
+  filename: string,
+  side?: 'A' | 'B',
+  sideLabel?: string,
+  analysisMode: 'single' | 'comparative' = 'single'
+): Promise<string | null> => {
   try {
     const sessionId = await getSessionId();
     if (!sessionId) {
       throw new Error('Kunde inte skapa session. Försök ladda om sidan.');
     }
     
-    console.log('Creating document from OCR text:', filename);
+    console.log('Creating document from OCR text:', filename, 'Side:', side);
     
     // Create text file blob
     const textBlob = new Blob([text], { type: 'text/plain' });
@@ -153,7 +167,7 @@ export const createDocumentFromText = async (text: string, filename: string): Pr
       throw new Error('Kunde inte ladda upp den extraherade texten. Försök igen.');
     }
 
-    // Create document record
+    // Create document record with side information
     const { data, error: insertError } = await supabase
       .from('documents')
       .insert({
@@ -161,7 +175,10 @@ export const createDocumentFromText = async (text: string, filename: string): Pr
         filename: filename,
         mimetype: 'text/plain',
         storage_path: filePath,
-        content: text
+        content: text,
+        side: side || null,
+        side_label: sideLabel || null,
+        analysis_mode: analysisMode
       })
       .select('id')
       .single();
@@ -350,77 +367,105 @@ const extractOdtText = async (file: File): Promise<string> => {
 
 // Generate legal counterarguments (keeping existing mock implementation)
 export const generateCounterarguments = async (
-  documents: { id: string, content: string }[]
+  documents: { id: string, content: string, side?: 'A' | 'B' | null }[]
 ): Promise<any> => {
   try {
     console.log('Generating counterarguments for', documents.length, 'documents');
     
+    // Check if we have documents from both sides for comparative analysis
+    const sideADocs = documents.filter(doc => doc.side === 'A');
+    const sideBDocs = documents.filter(doc => doc.side === 'B');
+    const singleDocs = documents.filter(doc => !doc.side);
+    
+    const isComparativeAnalysis = sideADocs.length > 0 && sideBDocs.length > 0;
+    
     // Wait to simulate processing time
     await new Promise(resolve => setTimeout(resolve, 2000));
     
-    // Extract some text from the documents
-    const combinedText = documents
-      .map(doc => doc.content)
-      .join(' ')
-      .substring(0, 500);
-    
-    // Generate mock counterarguments based on document content
-    return {
-      claims: [
-        {
-          claim: "Avtalet är bindande enligt 1 § AvtL",
-          counterarguments: [
-            {
-              argument: "Motparten saknade behörighet att ingå avtalet enligt 10 § 2 st. AvtL",
-              strength: 0.92,
-              references: ["NJA 2018 s. 301", "Högsta domstolens dom i mål T 3034-19"]
-            },
-            {
-              argument: "Avtalet tillkom under svikligt förledande enligt 30 § AvtL",
-              strength: 0.78,
-              references: ["Prop. 2015/16:197 s. 188", "NJA 1995 s. 437"]
-            },
-            {
-              argument: "Formkravet i 4 kap. 1 § Jordabalken är inte uppfyllt",
-              strength: 0.65,
-              references: ["NJA 2000 s. 747", "RH 1999:138"]
-            },
-            {
-              argument: "Oskäligt avtalsvillkor enligt 36 § AvtL",
-              strength: 0.51,
-              references: ["MD 2009:35", "NJA 2017 s. 113"]
-            }
-          ]
-        },
-        {
-          claim: "Skadeståndsskyldighet föreligger enligt 2 kap. 1 § SkL",
-          counterarguments: [
-            {
-              argument: "Force majeure-situationen utesluter ansvar enligt principen i 27 § KöpL",
-              strength: 0.88,
-              references: ["NJA 2017 s. 9", "Högsta domstolens dom i mål T 1451-17"]
-            },
-            {
-              argument: "Adekvat kausalitet saknas enligt praxis från HD",
-              strength: 0.81,
-              references: ["NJA 2011 s. 576", "NJA 2017 s. 9"]
-            },
-            {
-              argument: "Medvållande enligt 6 kap. 1 § SkL reducerar ansvaret",
-              strength: 0.75,
-              references: ["NJA 1979 s. 129", "NJA 2000 s. 380"]
-            },
-            {
-              argument: "Preskription enligt 2 § PreskL",
-              strength: 0.42,
-              references: ["NJA 2016 s. 505", "Svea hovrätts dom i mål T 7024-15"]
-            }
-          ]
-        }
-      ]
-    };
+    if (isComparativeAnalysis) {
+      console.log('Performing comparative analysis');
+      return generateComparativeAnalysis(sideADocs, sideBDocs);
+    } else {
+      console.log('Performing single-document analysis');
+      return generateSingleAnalysis(documents);
+    }
   } catch (error) {
     console.error('Error generating counterarguments:', error);
     throw error;
   }
+};
+
+// Generate comparative analysis between two sides
+const generateComparativeAnalysis = (
+  sideADocs: { id: string, content: string }[],
+  sideBDocs: { id: string, content: string }[]
+) => {
+  const sideAText = sideADocs.map(doc => doc.content).join(' ');
+  const sideBText = sideBDocs.map(doc => doc.content).join(' ');
+  
+  return {
+    claims: [
+      {
+        claim: "Avtalsrättslig grund enligt 1 § AvtL",
+        counterarguments: [
+          {
+            argument: "Motparten bestrider avtalsförhållandet enligt deras inlaga",
+            strength: 0.95,
+            references: ["Motpartens dokument", "Bestridande av talan"],
+            source: "opposing_document"
+          },
+          {
+            argument: "Svikligt förledande enligt 30 § AvtL",
+            strength: 0.82,
+            references: ["NJA 1995 s. 437", "Prop. 2015/16:197 s. 188"],
+            source: "ai_generated"
+          }
+        ]
+      },
+      {
+        claim: "Skadeståndsskyldighet enligt 2 kap. 1 § SkL",
+        counterarguments: [
+          {
+            argument: "Motparten påstår force majeure enligt deras argumentation",
+            strength: 0.88,
+            references: ["Motpartens inlaga avsnitt 3", "Hänvisning till force majeure"],
+            source: "opposing_document"
+          },
+          {
+            argument: "Adekvat kausalitet saknas enligt HD:s praxis",
+            strength: 0.76,
+            references: ["NJA 2011 s. 576", "NJA 2017 s. 9"],
+            source: "ai_generated"
+          }
+        ]
+      }
+    ],
+    analysis_mode: 'comparative'
+  };
+};
+
+// Generate single-document analysis (existing functionality)
+const generateSingleAnalysis = (documents: { id: string, content: string }[]) => {
+  return {
+    claims: [
+      {
+        claim: "Avtalet är bindande enligt 1 § AvtL",
+        counterarguments: [
+          {
+            argument: "Motparten saknade behörighet att ingå avtalet enligt 10 § 2 st. AvtL",
+            strength: 0.92,
+            references: ["NJA 2018 s. 301", "Högsta domstolens dom i mål T 3034-19"],
+            source: "ai_generated"
+          },
+          {
+            argument: "Avtalet tillkom under svikligt förledande enligt 30 § AvtL",
+            strength: 0.78,
+            references: ["Prop. 2015/16:197 s. 188", "NJA 1995 s. 437"],
+            source: "ai_generated"
+          }
+        ]
+      }
+    ],
+    analysis_mode: 'single'
+  };
 };

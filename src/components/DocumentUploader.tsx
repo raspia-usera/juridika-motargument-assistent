@@ -1,4 +1,3 @@
-
 import React, { useCallback, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { uploadDocument, validateFile } from '@/lib/documentProcessor';
@@ -9,9 +8,17 @@ import { useToast } from '@/hooks/use-toast';
 
 interface DocumentUploaderProps {
   onUploadComplete: (documentId: string) => void;
+  side?: 'A' | 'B';
+  sideLabel?: string;
+  analysisMode?: 'single' | 'comparative';
 }
 
-const DocumentUploader: React.FC<DocumentUploaderProps> = ({ onUploadComplete }) => {
+const DocumentUploader: React.FC<DocumentUploaderProps> = ({ 
+  onUploadComplete, 
+  side, 
+  sideLabel,
+  analysisMode = 'single'
+}) => {
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -28,7 +35,7 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({ onUploadComplete })
 
     try {
       for (const file of acceptedFiles) {
-        console.log('Processing file:', file.name, file.type, file.size);
+        console.log('Processing file:', file.name, file.type, file.size, 'Side:', side);
         
         // Validate file first
         const validation = validateFile(file);
@@ -54,8 +61,8 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({ onUploadComplete })
           });
         }, 200);
 
-        // Upload file to Supabase
-        const documentId = await uploadDocument(file);
+        // Upload file to Supabase with side information
+        const documentId = await uploadDocument(file, side, sideLabel, analysisMode);
         
         clearInterval(progressInterval);
         
@@ -68,9 +75,10 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({ onUploadComplete })
 
         setTimeout(() => {
           setUploading(false);
+          const sideText = side && sideLabel ? ` till ${sideLabel}` : '';
           toast({
             title: 'Uppladdning klar',
-            description: `Filen "${file.name}" har laddats upp och bearbetats.`,
+            description: `Filen "${file.name}" har laddats upp${sideText}.`,
           });
           onUploadComplete(documentId);
           setSuccess(null);
@@ -90,7 +98,7 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({ onUploadComplete })
         variant: "destructive",
       });
     }
-  }, [onUploadComplete, toast]);
+  }, [onUploadComplete, toast, side, sideLabel, analysisMode]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,

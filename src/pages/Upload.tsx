@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '@/components/Header';
@@ -5,10 +6,12 @@ import Footer from '@/components/Footer';
 import DocumentUploader from '@/components/DocumentUploader';
 import OCRUploader from '@/components/OCRUploader';
 import NJIntegration from '@/components/NJIntegration';
+import UploadModeSelector from '@/components/UploadModeSelector';
+import DualSideUploader from '@/components/DualSideUploader';
 import { Button } from '@/components/ui/button';
 import { getSessionDocuments } from '@/lib/supabase';
 import { executeMigrations, setupStorage } from '@/lib/supabaseMigrations';
-import { createDocumentFromText } from '@/lib/documentProcessor';
+import { createDocumentFromText, uploadDocument } from '@/lib/documentProcessor';
 import { useToast } from '@/hooks/use-toast';
 import { DocumentItem } from '@/lib/supabase/types';
 import { Upload as UploadIcon, FileText, Image, Scale, ExternalLink } from 'lucide-react';
@@ -17,6 +20,9 @@ const Upload = () => {
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [initializationError, setInitializationError] = useState<string | null>(null);
+  const [uploadMode, setUploadMode] = useState<'single' | 'comparative'>('single');
+  const [sideALabel, setSideALabel] = useState('Sida A');
+  const [sideBLabel, setSideBLabel] = useState('Sida B');
   const navigate = useNavigate();
   const { toast } = useToast();
   
@@ -69,7 +75,7 @@ const Upload = () => {
     }
   };
   
-  // Handle upload complete
+  // Handle upload complete for single mode
   const handleUploadComplete = async (documentId: string) => {
     console.log('Upload completed for document:', documentId);
     await loadDocuments();
@@ -79,13 +85,25 @@ const Upload = () => {
       description: "Dokumentet har laddats upp och behandlats",
     });
   };
+
+  // Handle upload complete for dual side mode
+  const handleDualSideUploadComplete = async (documentId: string, side: 'A' | 'B') => {
+    console.log('Dual-side upload completed for document:', documentId, 'Side:', side);
+    await loadDocuments();
+    
+    const sideLabel = side === 'A' ? sideALabel : sideBLabel;
+    toast({
+      title: "Uppladdning klar",
+      description: `Dokumentet har laddats upp till ${sideLabel}`,
+    });
+  };
   
-  // Handle OCR text extraction
+  // Handle OCR text extraction for single mode
   const handleOCRComplete = async (text: string, filename: string) => {
     console.log('OCR completed:', filename, text.length, 'characters');
     
     try {
-      const documentId = await createDocumentFromText(text, filename);
+      const documentId = await createDocumentFromText(text, filename, undefined, undefined, uploadMode);
       if (documentId) {
         await loadDocuments();
         toast({
@@ -102,19 +120,49 @@ const Upload = () => {
       });
     }
   };
+
+  // Handle OCR text extraction for dual side mode
+  const handleDualSideOCRComplete = async (text: string, filename: string, side: 'A' | 'B') => {
+    console.log('Dual-side OCR completed:', filename, 'Side:', side, text.length, 'characters');
+    
+    try {
+      const sideLabel = side === 'A' ? sideALabel : sideBLabel;
+      const documentId = await createDocumentFromText(text, filename, side, sideLabel, 'comparative');
+      if (documentId) {
+        await loadDocuments();
+        toast({
+          title: "OCR klar",
+          description: `Text extraherad och sparad till ${sideLabel}`,
+        });
+      }
+    } catch (error) {
+      console.error('Error saving OCR text:', error);
+      toast({
+        title: "Fel vid sparande",
+        description: "Kunde inte spara den extraherade texten",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Handle side label changes
+  const handleSideLabelChange = (side: 'A' | 'B', label: string) => {
+    if (side === 'A') {
+      setSideALabel(label);
+    } else {
+      setSideBLabel(label);
+    }
+  };
   
   // Navigate to analyze page
   const handleContinue = () => {
     navigate('/analyze');
   };
 
-  // Handle NJ.se integration placeholder
-  const handleNjIntegration = () => {
-    toast({
-      title: "NJ.se Integration",
-      description: "Denna funktion kommer att implementeras i en framtida version. Den kommer att möjliggöra automatisk hämtning av rättsfall och doktrin från Norstedts Juridik.",
-    });
-  };
+  // Group documents by side for display
+  const sideADocs = documents.filter(doc => doc.side === 'A');
+  const sideBDocs = documents.filter(doc => doc.side === 'B');
+  const singleDocs = documents.filter(doc => !doc.side);
 
   if (loading) {
     return (
@@ -158,37 +206,53 @@ const Upload = () => {
                 <strong>Anslutningsfel:</strong> {initializationError}
               </div>
             )}
-            
-            {/* Upload Sections Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-              {/* Document Upload Section */}
-              <div className="juridika-card">
-                <div className="flex items-center mb-6">
-                  <UploadIcon className="h-6 w-6 text-teal-600 mr-3" />
-                  <h2 className="text-xl font-semibold text-slate-800">
-                    Ladda upp digitala dokument
-                  </h2>
-                </div>
-                <p className="text-slate-600 mb-4 text-sm">
-                  Accepterade format: PDF, Word, RTF, Text och mer
-                </p>
-                <DocumentUploader onUploadComplete={handleUploadComplete} />
-              </div>
 
-              {/* OCR Upload Section */}
-              <div className="juridika-card">
-                <div className="flex items-center mb-6">
-                  <Image className="h-6 w-6 text-teal-600 mr-3" />
-                  <h2 className="text-xl font-semibold text-slate-800">
-                    Fotografera pappersdokument
-                  </h2>
+            {/* Upload Mode Selector */}
+            <UploadModeSelector
+              mode={uploadMode}
+              onModeChange={setUploadMode}
+            />
+            
+            {/* Upload Sections */}
+            {uploadMode === 'comparative' ? (
+              <DualSideUploader
+                sideALabel={sideALabel}
+                sideBLabel={sideBLabel}
+                onSideLabelChange={handleSideLabelChange}
+                onUploadComplete={handleDualSideUploadComplete}
+                onOCRComplete={handleDualSideOCRComplete}
+              />
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                {/* Document Upload Section */}
+                <div className="juridika-card">
+                  <div className="flex items-center mb-6">
+                    <UploadIcon className="h-6 w-6 text-teal-600 mr-3" />
+                    <h2 className="text-xl font-semibold text-slate-800">
+                      Ladda upp digitala dokument
+                    </h2>
+                  </div>
+                  <p className="text-slate-600 mb-4 text-sm">
+                    Accepterade format: PDF, Word, RTF, Text och mer
+                  </p>
+                  <DocumentUploader onUploadComplete={handleUploadComplete} />
                 </div>
-                <p className="text-slate-600 mb-4 text-sm">
-                  Stödda format: JPG, PNG, HEIC, BMP, WEBP, PDF och mer
-                </p>
-                <OCRUploader onTextExtracted={handleOCRComplete} />
+
+                {/* OCR Upload Section */}
+                <div className="juridika-card">
+                  <div className="flex items-center mb-6">
+                    <Image className="h-6 w-6 text-teal-600 mr-3" />
+                    <h2 className="text-xl font-semibold text-slate-800">
+                      Fotografera pappersdokument
+                    </h2>
+                  </div>
+                  <p className="text-slate-600 mb-4 text-sm">
+                    Stödda format: JPG, PNG, HEIC, BMP, WEBP, PDF och mer
+                  </p>
+                  <OCRUploader onTextExtracted={handleOCRComplete} />
+                </div>
               </div>
-            </div>
+            )}
 
             {/* NJ.se Integration Section */}
             <div className="juridika-card mb-8">
@@ -225,37 +289,63 @@ const Upload = () => {
                   </div>
                 ) : (
                   <>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {documents.map(doc => (
-                        <div 
-                          key={doc.id}
-                          className="bg-slate-50 border border-slate-200 rounded-lg p-4 hover:border-slate-300 transition-colors"
-                        >
-                          <div className="flex items-start space-x-3">
-                            <FileText className="h-5 w-5 text-teal-600 mt-0.5 flex-shrink-0" />
-                            <div className="flex-1 min-w-0">
-                              <p className="font-medium text-slate-800 truncate" title={doc.filename}>
-                                {doc.filename}
-                              </p>
-                              <p className="text-sm text-slate-500 mt-1">
-                                {new Date(doc.created_at).toLocaleDateString('sv-SE', {
-                                  year: 'numeric',
-                                  month: 'short',
-                                  day: 'numeric',
-                                  hour: '2-digit',
-                                  minute: '2-digit'
-                                })}
-                              </p>
-                              {doc.content && (
-                                <p className="text-xs text-slate-400 mt-1">
-                                  {doc.content.length > 100 ? `${doc.content.substring(0, 100)}...` : doc.content}
-                                </p>
-                              )}
-                            </div>
+                    {/* Comparative mode document display */}
+                    {uploadMode === 'comparative' && (sideADocs.length > 0 || sideBDocs.length > 0) && (
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                        <div>
+                          <h3 className="font-medium text-slate-700 mb-3">{sideALabel} ({sideADocs.length})</h3>
+                          <div className="space-y-2">
+                            {sideADocs.map(doc => (
+                              <div key={doc.id} className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                                <p className="font-medium text-slate-800 truncate">{doc.filename}</p>
+                                <p className="text-sm text-slate-500">{new Date(doc.created_at).toLocaleDateString('sv-SE')}</p>
+                              </div>
+                            ))}
                           </div>
                         </div>
-                      ))}
-                    </div>
+                        <div>
+                          <h3 className="font-medium text-slate-700 mb-3">{sideBLabel} ({sideBDocs.length})</h3>
+                          <div className="space-y-2">
+                            {sideBDocs.map(doc => (
+                              <div key={doc.id} className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                                <p className="font-medium text-slate-800 truncate">{doc.filename}</p>
+                                <p className="text-sm text-slate-500">{new Date(doc.created_at).toLocaleDateString('sv-SE')}</p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Single mode document display */}
+                    {uploadMode === 'single' && singleDocs.length > 0 && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+                        {singleDocs.map(doc => (
+                          <div 
+                            key={doc.id}
+                            className="bg-slate-50 border border-slate-200 rounded-lg p-4 hover:border-slate-300 transition-colors"
+                          >
+                            <div className="flex items-start space-x-3">
+                              <FileText className="h-5 w-5 text-teal-600 mt-0.5 flex-shrink-0" />
+                              <div className="flex-1 min-w-0">
+                                <p className="font-medium text-slate-800 truncate" title={doc.filename}>
+                                  {doc.filename}
+                                </p>
+                                <p className="text-sm text-slate-500 mt-1">
+                                  {new Date(doc.created_at).toLocaleDateString('sv-SE', {
+                                    year: 'numeric',
+                                    month: 'short',
+                                    day: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                  })}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                     
                     <div className="mt-8 flex justify-end">
                       <Button
