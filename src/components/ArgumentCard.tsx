@@ -8,9 +8,10 @@ import { Counterargument } from '@/lib/supabase/types';
 interface ArgumentCardProps {
   counterargument: Counterargument;
   index: number;
+  claim?: string;
 }
 
-const ArgumentCard: React.FC<ArgumentCardProps> = ({ counterargument, index }) => {
+const ArgumentCard: React.FC<ArgumentCardProps> = ({ counterargument, index, claim }) => {
   const getStrengthColor = (strength: number) => {
     if (strength >= 0.8) return 'bg-red-500';
     if (strength >= 0.6) return 'bg-yellow-500';
@@ -61,7 +62,7 @@ const ArgumentCard: React.FC<ArgumentCardProps> = ({ counterargument, index }) =
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <CardTitle className="text-lg font-semibold text-juridika-charcoal leading-tight">
-            Motargument {index + 1}
+            {claim ? `Påstående: ${claim}` : `Motargument ${index + 1}`}
           </CardTitle>
           <div className="flex flex-col items-end space-y-2">
             <Badge 
