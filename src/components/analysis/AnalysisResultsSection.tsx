@@ -22,13 +22,16 @@ const AnalysisResultsSection: React.FC<AnalysisResultsSectionProps> = ({
       </h2>
       
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {results.claims.map((claim, index) => (
-          <ArgumentCard 
-            key={index}
-            claim={claim.claim}
-            counterarguments={claim.counterarguments}
-          />
-        ))}
+        {results.claims.map((claim, claimIndex) => 
+          claim.counterarguments.map((counterargument, counterIndex) => (
+            <ArgumentCard 
+              key={`${claimIndex}-${counterIndex}`}
+              counterargument={counterargument}
+              index={counterIndex}
+              claim={claim.claim}
+            />
+          ))
+        )}
       </div>
       
       <div className="juridika-card mt-8">
