@@ -1,47 +1,54 @@
 
-/* Professional Legal Theme - Mint & Beige Palette */
+/* Professional Legal Theme - Deep Ebony & Wood Tones */
 :root {
-  /* Primary Colors - Professional Teal/Mint and Warm Neutrals */
-  --color-primary: #1e293b;          /* Slate 800 - Deep professional text */
-  --color-primary-light: #334155;    /* Slate 700 */
-  --color-primary-dark: #0f172a;     /* Slate 900 */
+  /* Primary Colors - Deep Ebony and Rich Wood Tones */
+  --color-primary: #1a1a1a;          /* Deep ebony - Main text */
+  --color-primary-light: #2d2d2d;    /* Charcoal gray */
+  --color-primary-dark: #0a0a0a;     /* Near black */
   
-  /* Accent Colors - Teal/Mint and Warm Tones */
-  --color-accent: #14b8a6;           /* Teal 500 - Professional mint */
-  --color-accent-light: #5eead4;     /* Teal 300 */
-  --color-accent-dark: #0d9488;      /* Teal 600 */
+  /* Accent Colors - Warm Wood and Gold Tones */
+  --color-accent: #8b6914;           /* Deep gold - Professional accent */
+  --color-accent-light: #b8860b;     /* Warm gold */
+  --color-accent-dark: #6b4e03;      /* Dark bronze */
   
-  /* Secondary Accent - Warm Beige/Amber */
-  --color-secondary: #f59e0b;        /* Amber 500 */
-  --color-secondary-light: #fde68a;  /* Amber 200 */
-  --color-secondary-dark: #d97706;   /* Amber 600 */
+  /* Secondary Accent - Rich Wood Tones */
+  --color-secondary: #8b4513;        /* Saddle brown */
+  --color-secondary-light: #cd853f;  /* Peru */
+  --color-secondary-dark: #654321;   /* Dark brown */
   
-  /* Background Colors - Clean and Warm */
-  --color-bg-primary: #ffffff;       /* Pure white */
-  --color-bg-secondary: #f8fafc;     /* Slate 50 - Very light gray */
-  --color-bg-tertiary: #f1f5f9;      /* Slate 100 - Light gray */
-  --color-bg-warm: #fefdf8;          /* Warm white */
+  /* Background Colors - Warm Neutrals */
+  --color-bg-primary: #fefefe;       /* Pure white */
+  --color-bg-secondary: #f8f6f3;     /* Warm white */
+  --color-bg-tertiary: #f0ede8;      /* Light warm gray */
+  --color-bg-warm: #faf8f5;          /* Cream white */
+  --color-bg-wood: #f5f2ed;          /* Wood-inspired background */
   
   /* Text Colors - High Contrast and Readable */
-  --color-text-primary: #1e293b;     /* Slate 800 - Main text */
-  --color-text-secondary: #475569;   /* Slate 600 - Secondary text */
-  --color-text-muted: #64748b;       /* Slate 500 - Muted text */
+  --color-text-primary: #1a1a1a;     /* Deep ebony - Main text */
+  --color-text-secondary: #4a4a4a;   /* Dark gray - Secondary text */
+  --color-text-muted: #6a6a6a;       /* Medium gray - Muted text */
+  --color-text-light: #8a8a8a;       /* Light gray - Subtle text */
   
-  /* Border Colors - Subtle and Clean */
-  --color-border-light: #e2e8f0;     /* Slate 200 */
-  --color-border-medium: #cbd5e1;    /* Slate 300 */
-  --color-border-strong: #94a3b8;    /* Slate 400 */
+  /* Border Colors - Sophisticated and Warm */
+  --color-border-light: #e8e5e0;     /* Light warm gray */
+  --color-border-medium: #d0ccc5;    /* Medium warm gray */
+  --color-border-strong: #a8a39a;    /* Strong warm gray */
+  --color-border-accent: #c9a96e;    /* Gold-tinted border */
   
   /* Status Colors */
-  --color-success: #14b8a6;          /* Teal 500 */
-  --color-warning: #f59e0b;          /* Amber 500 */
-  --color-error: #ef4444;            /* Red 500 */
+  --color-success: #2d5016;          /* Deep forest green */
+  --color-warning: #8b6914;          /* Deep gold */
+  --color-error: #8b2635;            /* Deep red */
   
-  /* Shadows - Subtle and Professional */
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-  --shadow-warm: 0 4px 6px -1px rgba(245, 158, 11, 0.1), 0 2px 4px -1px rgba(245, 158, 11, 0.06);
+  /* Wood-inspired gradients */
+  --gradient-wood: linear-gradient(135deg, #f5f2ed 0%, #ede7dc 100%);
+  --gradient-accent: linear-gradient(135deg, #8b6914 0%, #b8860b 100%);
+  
+  /* Enhanced shadows with warmth */
+  --shadow-sm: 0 1px 3px 0 rgba(26, 26, 26, 0.1);
+  --shadow-md: 0 4px 8px -2px rgba(26, 26, 26, 0.1), 0 2px 4px -1px rgba(26, 26, 26, 0.06);
+  --shadow-lg: 0 12px 20px -4px rgba(26, 26, 26, 0.15), 0 4px 8px -2px rgba(26, 26, 26, 0.1);
+  --shadow-warm: 0 4px 8px -1px rgba(139, 105, 20, 0.15), 0 2px 4px -1px rgba(139, 105, 20, 0.1);
 }
 
 /* Base Styles */
@@ -55,35 +62,36 @@ body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   line-height: 1.6;
   color: var(--color-text-primary);
-  background-color: var(--color-bg-warm);
+  background: var(--gradient-wood);
   font-size: 16px;
+  min-height: 100vh;
 }
 
-/* Typography Scale - Enhanced */
+/* Typography Scale - Enhanced with wood-inspired styling */
 h1 {
-  font-size: 2.5rem;
+  font-size: 2.75rem;
   font-weight: 700;
-  line-height: 1.2;
+  line-height: 1.1;
   color: var(--color-text-primary);
   margin-bottom: 1.5rem;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.025em;
 }
 
 h2 {
-  font-size: 2rem;
+  font-size: 2.25rem;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--color-text-primary);
+  margin-bottom: 1.25rem;
+  letter-spacing: -0.015em;
+}
+
+h3 {
+  font-size: 1.75rem;
   font-weight: 600;
   line-height: 1.3;
   color: var(--color-text-primary);
   margin-bottom: 1rem;
-  letter-spacing: -0.01em;
-}
-
-h3 {
-  font-size: 1.5rem;
-  font-weight: 600;
-  line-height: 1.4;
-  color: var(--color-text-primary);
-  margin-bottom: 0.75rem;
 }
 
 p {
@@ -95,24 +103,24 @@ p {
 
 /* Container Styles */
 .juridika-container {
-  max-width: 1200px;
+  max-width: 1280px;
   margin: 0 auto;
-  padding: 0 1.5rem;
+  padding: 0 2rem;
 }
 
 .juridika-background {
-  background: linear-gradient(135deg, var(--color-bg-warm) 0%, var(--color-bg-secondary) 100%);
+  background: var(--gradient-wood);
   min-height: 100vh;
 }
 
-/* Enhanced Card Styles */
+/* Enhanced Card Styles with Wood-inspired Design */
 .juridika-card {
-  background-color: var(--color-bg-primary);
+  background: linear-gradient(145deg, var(--color-bg-primary), var(--color-bg-secondary));
   border: 1px solid var(--color-border-light);
-  border-radius: 1rem;
-  padding: 2rem;
-  box-shadow: var(--shadow-sm);
-  transition: all 0.3s ease-in-out;
+  border-radius: 1.5rem;
+  padding: 2.5rem;
+  box-shadow: var(--shadow-md);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
 }
@@ -123,44 +131,72 @@ p {
   top: 0;
   left: 0;
   right: 0;
-  height: 3px;
-  background: linear-gradient(90deg, var(--color-accent), var(--color-secondary));
+  height: 4px;
+  background: var(--gradient-accent);
   opacity: 0;
-  transition: opacity 0.3s ease;
+  transition: opacity 0.4s ease;
 }
 
 .juridika-card:hover {
   box-shadow: var(--shadow-lg);
-  border-color: var(--color-accent-light);
-  transform: translateY(-2px);
+  border-color: var(--color-border-accent);
+  transform: translateY(-4px);
 }
 
 .juridika-card:hover::before {
   opacity: 1;
 }
 
-/* Enhanced Button Styles */
+/* Side-specific card variants */
+.juridika-card-side-a {
+  border-left: 4px solid var(--color-accent);
+  background: linear-gradient(145deg, #faf9f7, #f5f3f0);
+}
+
+.juridika-card-side-b {
+  border-left: 4px solid var(--color-secondary);
+  background: linear-gradient(145deg, #f9f7f5, #f3f0ed);
+}
+
+/* Enhanced Button Styles with Wood-inspired Design */
 .juridika-btn-primary {
-  background: linear-gradient(135deg, var(--color-accent), var(--color-accent-dark));
+  background: var(--gradient-accent);
   color: white;
   border: none;
-  padding: 0.875rem 2rem;
-  border-radius: 0.75rem;
+  padding: 1rem 2.5rem;
+  border-radius: 1rem;
   font-weight: 600;
-  font-size: 0.95rem;
+  font-size: 1rem;
   cursor: pointer;
-  transition: all 0.3s ease-in-out;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.75rem;
   text-decoration: none;
   box-shadow: var(--shadow-sm);
+  position: relative;
+  overflow: hidden;
+}
+
+.juridika-btn-primary::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  transition: left 0.6s;
 }
 
 .juridika-btn-primary:hover:not(:disabled) {
-  transform: translateY(-2px);
+  transform: translateY(-3px);
   box-shadow: var(--shadow-lg);
   background: linear-gradient(135deg, var(--color-accent-dark), var(--color-accent));
+}
+
+.juridika-btn-primary:hover::before {
+  left: 100%;
 }
 
 .juridika-btn-primary:disabled {
@@ -173,97 +209,129 @@ p {
   background-color: transparent;
   color: var(--color-accent);
   border: 2px solid var(--color-accent);
-  padding: 0.75rem 1.75rem;
-  border-radius: 0.75rem;
+  padding: 0.875rem 2rem;
+  border-radius: 1rem;
   font-weight: 500;
-  font-size: 0.95rem;
+  font-size: 1rem;
   cursor: pointer;
-  transition: all 0.3s ease-in-out;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.75rem;
 }
 
 .juridika-btn-secondary:hover:not(:disabled) {
-  background-color: var(--color-accent);
+  background: var(--gradient-accent);
   color: white;
-  transform: translateY(-1px);
+  transform: translateY(-2px);
   box-shadow: var(--shadow-md);
 }
 
-/* Legal Icon Styles */
+/* Justice scales icon styling */
 .juridika-scales {
   color: var(--color-accent);
-  filter: drop-shadow(0 2px 4px rgba(20, 184, 166, 0.2));
+  filter: drop-shadow(0 3px 6px rgba(139, 105, 20, 0.3));
+  animation: subtle-glow 3s ease-in-out infinite;
+}
+
+@keyframes subtle-glow {
+  0%, 100% { 
+    filter: drop-shadow(0 3px 6px rgba(139, 105, 20, 0.3));
+  }
+  50% { 
+    filter: drop-shadow(0 4px 8px rgba(139, 105, 20, 0.5));
+  }
 }
 
 /* Layout Improvements */
 .main-content {
-  padding: 2rem 0;
-  min-height: calc(100vh - 120px);
+  padding: 3rem 0;
+  min-height: calc(100vh - 140px);
 }
 
 /* Enhanced Form Styles */
 .form-group {
-  margin-bottom: 1.5rem;
+  margin-bottom: 2rem;
 }
 
 .form-label {
   display: block;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.75rem;
   font-weight: 600;
   color: var(--color-text-primary);
-  font-size: 0.95rem;
+  font-size: 1rem;
 }
 
 .form-input {
   width: 100%;
-  padding: 0.875rem;
+  padding: 1rem;
   border: 2px solid var(--color-border-medium);
-  border-radius: 0.75rem;
+  border-radius: 1rem;
   font-size: 1rem;
-  transition: all 0.3s ease-in-out;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   background-color: var(--color-bg-primary);
+  color: var(--color-text-primary);
 }
 
 .form-input:focus {
   outline: none;
   border-color: var(--color-accent);
-  box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.1);
+  box-shadow: 0 0 0 4px rgba(139, 105, 20, 0.1);
   transform: translateY(-1px);
 }
 
 /* Enhanced Alert Styles */
 .alert {
-  padding: 1.25rem;
-  border-radius: 0.75rem;
-  margin: 1rem 0;
-  border-left: 4px solid;
+  padding: 1.5rem;
+  border-radius: 1rem;
+  margin: 1.5rem 0;
+  border-left: 5px solid;
   box-shadow: var(--shadow-sm);
 }
 
 .alert-info {
-  background: linear-gradient(135deg, #e0f2fe, #f0f9ff);
-  border-color: #0284c7;
-  color: #0c4a6e;
+  background: linear-gradient(135deg, #f0f8ff, #e6f3ff);
+  border-color: #2563eb;
+  color: #1e40af;
 }
 
 .alert-warning {
-  background: linear-gradient(135deg, #fefce8, #fffbeb);
+  background: linear-gradient(135deg, #fef9e7, #fdf4d3);
   border-color: var(--color-warning);
   color: #92400e;
 }
 
 .alert-error {
-  background: linear-gradient(135deg, #fef2f2, #fef7f7);
+  background: linear-gradient(135deg, #fef2f2, #feeaea);
   border-color: var(--color-error);
   color: #991b1b;
 }
 
 .alert-success {
-  background: linear-gradient(135deg, #f0fdfa, #ecfdf5);
+  background: linear-gradient(135deg, #f0fdf4, #dcfce7);
   border-color: var(--color-success);
-  color: #065f46;
+  color: #166534;
+}
+
+/* Upload area enhancements */
+.upload-zone {
+  border: 3px dashed var(--color-border-medium);
+  border-radius: 1.5rem;
+  background: linear-gradient(145deg, var(--color-bg-primary), var(--color-bg-secondary));
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.upload-zone:hover {
+  border-color: var(--color-accent);
+  background: linear-gradient(145deg, var(--color-bg-secondary), var(--color-bg-tertiary));
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.upload-zone.drag-active {
+  border-color: var(--color-accent);
+  background: linear-gradient(145deg, rgba(139, 105, 20, 0.05), rgba(139, 105, 20, 0.1));
+  transform: scale(1.02);
 }
 
 /* Mobile Responsiveness */
@@ -273,17 +341,18 @@ p {
   }
   
   .juridika-card {
-    padding: 1.5rem;
+    padding: 2rem;
+    border-radius: 1.25rem;
   }
   
-  h1 { font-size: 2rem; }
-  h2 { font-size: 1.75rem; }
-  h3 { font-size: 1.25rem; }
+  h1 { font-size: 2.25rem; }
+  h2 { font-size: 1.875rem; }
+  h3 { font-size: 1.5rem; }
   
   .juridika-btn-primary,
   .juridika-btn-secondary {
-    padding: 0.75rem 1.5rem;
-    font-size: 0.9rem;
+    padding: 0.875rem 1.75rem;
+    font-size: 0.95rem;
   }
 }
 
@@ -300,18 +369,22 @@ p {
 /* Focus Styles for Accessibility */
 *:focus-visible {
   outline: 3px solid var(--color-accent);
-  outline-offset: 2px;
-  border-radius: 0.25rem;
+  outline-offset: 3px;
+  border-radius: 0.5rem;
 }
 
-/* Gradient Animations */
-@keyframes gradient-shift {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
+/* Professional transitions */
+.transition-professional {
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.gradient-animate {
-  background-size: 200% 200%;
-  animation: gradient-shift 3s ease infinite;
+/* Side labeling */
+.side-label-a {
+  color: var(--color-accent);
+  font-weight: 600;
+}
+
+.side-label-b {
+  color: var(--color-secondary);
+  font-weight: 600;
 }

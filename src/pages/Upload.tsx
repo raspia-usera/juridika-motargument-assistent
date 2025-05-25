@@ -3,11 +3,11 @@ import React from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import NJIntegration from '@/components/NJIntegration';
-import UploadModeSelector from '@/components/UploadModeSelector';
-import DualSideUploader from '@/components/DualSideUploader';
+import EnhancedUploadModeSelector from '@/components/upload/EnhancedUploadModeSelector';
+import EnhancedDualSideUploader from '@/components/upload/EnhancedDualSideUploader';
+import EnhancedSingleModeUploader from '@/components/upload/EnhancedSingleModeUploader';
 import UploadHeader from '@/components/upload/UploadHeader';
 import ErrorAlert from '@/components/upload/ErrorAlert';
-import SingleModeUploadSection from '@/components/upload/SingleModeUploadSection';
 import DocumentsList from '@/components/upload/DocumentsList';
 import InformationSection from '@/components/upload/InformationSection';
 import LoadingSpinner from '@/components/upload/LoadingSpinner';
@@ -39,21 +39,21 @@ const Upload = () => {
     <div className="min-h-screen flex flex-col juridika-background">
       <Header />
       
-      <main className="flex-grow py-8 px-4">
+      <main className="flex-grow py-12 px-4">
         <div className="juridika-container">
-          <div className="max-w-5xl mx-auto">
+          <div className="max-w-6xl mx-auto">
             <UploadHeader />
             <ErrorAlert error={initializationError} />
 
-            {/* Upload Mode Selector */}
-            <UploadModeSelector
+            {/* Enhanced Upload Mode Selector */}
+            <EnhancedUploadModeSelector
               mode={uploadMode}
               onModeChange={setUploadMode}
             />
             
             {/* Upload Sections */}
             {uploadMode === 'comparative' ? (
-              <DualSideUploader
+              <EnhancedDualSideUploader
                 sideALabel={sideALabel}
                 sideBLabel={sideBLabel}
                 onSideLabelChange={handleSideLabelChange}
@@ -61,35 +61,40 @@ const Upload = () => {
                 onOCRComplete={handleDualSideOCRComplete}
               />
             ) : (
-              <SingleModeUploadSection
+              <EnhancedSingleModeUploader
                 onUploadComplete={handleUploadComplete}
                 onOCRComplete={handleOCRComplete}
               />
             )}
 
             {/* NJ.se Integration Section */}
-            <div className="juridika-card mb-8">
-              <div className="flex items-center mb-4">
-                <ExternalLink className="h-6 w-6 text-teal-600 mr-3" />
-                <h2 className="text-xl font-semibold text-slate-800">
-                  Juridisk databas
+            <div className="juridika-card mt-12">
+              <div className="flex items-center mb-6">
+                <ExternalLink className="h-8 w-8 text-juridika-gold mr-4" />
+                <h2 className="text-2xl font-bold text-juridika-charcoal">
+                  Juridisk Databas Integration
                 </h2>
               </div>
               <NJIntegration />
             </div>
             
-            {/* Documents List Section */}
-            <div className="juridika-card">
-              <div className="flex items-center justify-between mb-6">
+            {/* Enhanced Documents List Section */}
+            <div className="juridika-card mt-8">
+              <div className="flex items-center justify-between mb-8">
                 <div className="flex items-center">
-                  <FileText className="h-6 w-6 text-teal-600 mr-3" />
-                  <h2 className="text-xl font-semibold text-slate-800">
-                    Uppladdade dokument ({documents.length})
-                  </h2>
+                  <FileText className="h-8 w-8 text-juridika-gold mr-4" />
+                  <div>
+                    <h2 className="text-2xl font-bold text-juridika-charcoal">
+                      Uppladdade Dokument ({documents.length})
+                    </h2>
+                    <p className="text-juridika-gray mt-1">
+                      Granska dina dokument innan analys
+                    </p>
+                  </div>
                 </div>
               </div>
               
-              <div className="space-y-4">
+              <div className="space-y-6">
                 <DocumentsList
                   documents={documents}
                   uploadMode={uploadMode}
