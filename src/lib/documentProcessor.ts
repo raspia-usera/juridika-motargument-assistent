@@ -1,9 +1,91 @@
+
 import mammoth from 'mammoth';
 import { supabase } from '@/lib/supabase/client';
 import { extractDocumentContent } from '@/lib/supabase/documents';
 import { classifyDocument } from '@/lib/juridika/documentClassifier';
 import { performLegalAnalysis } from '@/lib/juridika/legalAnalyzer';
 import { getSessionId } from '@/lib/supabase/session';
+
+// File validation function
+export const validateFile = (file: File): { isValid: boolean; error?: string } => {
+  const maxSize = 50 * 1024 * 1024; // 50MB
+  const allowedTypes = [
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/rtf',
+    'text/html',
+    'text/plain'
+  ];
+
+  if (file.size > maxSize) {
+    return { isValid: false, error: 'Filen är för stor. Maximal storlek är 50MB.' };
+  }
+
+  if (!allowedTypes.includes(file.type)) {
+    return { isValid: false, error: 'Filtypen stöds inte. Använd PDF, DOCX, RTF, HTML eller TXT.' };
+  }
+
+  return { isValid: true };
+};
+
+// Main upload function
+export const uploadDocument = async (
+  file: File,
+  side?: 'A' | 'B',
+  sideLabel?: string,
+  analysisMode: 'single' | 'comparative' = 'single'
+): Promise<string | null> => {
+  try {
+    const sessionId = await getSessionId();
+    if (!sessionId) throw new Error('No session ID available');
+    
+    // Create unique file path
+    const sanitizedName = file.name.replace(/[<>:"|?*]/g, '_');
+    const filePath = `${sessionId}/${Date.now()}_${sanitizedName}`;
+    
+    // Upload to Supabase storage
+    const { error: uploadError } = await supabase.storage
+      .from('documents')
+      .upload(filePath, file);
+      
+    if (uploadError) {
+      console.error('Storage upload error:', uploadError);
+      throw new Error('Kunde inte ladda upp filen. Försök igen.');
+    }
+
+    // Create document record
+    const { data, error: insertError } = await supabase
+      .from('documents')
+      .insert({
+        session_id: sessionId,
+        filename: file.name,
+        mimetype: file.type,
+        storage_path: filePath,
+        side: side || null,
+        side_label: sideLabel || null,
+        analysis_mode: analysisMode
+      })
+      .select('id')
+      .single();
+      
+    if (insertError) {
+      console.error('Database insert error:', insertError);
+      throw new Error('Kunde inte spara dokumentinformation. Försök igen.');
+    }
+    
+    const documentId = data?.id;
+    console.log('Document uploaded with ID:', documentId);
+    
+    // Process the document content
+    await processUploadedDocument(file, documentId);
+    
+    return documentId;
+  } catch (error) {
+    console.error('Error uploading document:', error);
+    throw error;
+  }
+};
 
 // Function to convert base64 to blob
 const base64ToBlob = (base64: string, type: string): Blob => {

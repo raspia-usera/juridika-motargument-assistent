@@ -54,7 +54,22 @@ export const getDocumentClassification = async (documentId: string): Promise<Doc
       return null;
     }
 
-    return data;
+    // Map database fields to interface properties
+    if (data) {
+      return {
+        id: data.id,
+        documentType: data.document_type,
+        legalArea: data.legal_area,
+        urgencyLevel: data.urgency_level,
+        complexityScore: data.complexity_score,
+        confidenceScore: data.confidence_score,
+        keyEntities: data.key_entities,
+        detectedClaims: data.detected_claims,
+        classificationMetadata: data.classification_metadata
+      };
+    }
+
+    return null;
   } catch (error) {
     console.error('Error in getDocumentClassification:', error);
     return null;
