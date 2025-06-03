@@ -1,10 +1,11 @@
 
 import { useState } from 'react';
-import { getDocumentById, createAnalysis, updateAnalysisResults } from '@/lib/supabase';
-import { generateCounterarguments } from '@/lib/documentProcessor';
+import { getDocumentById } from '@/lib/supabase';
+import { performLegalAnalysis } from '@/lib/juridika/legalAnalyzer';
+import { getSessionId } from '@/lib/supabase/session';
 import { generatePdfReport } from '@/lib/pdfExport';
 import { useToast } from '@/hooks/use-toast';
-import { DocumentItem, AnalysisResult } from '@/lib/supabase/types';
+import { AnalysisResult } from '@/lib/supabase/types';
 
 export const useDocumentAnalysis = () => {
   const [analyzing, setAnalyzing] = useState(false);
@@ -20,53 +21,45 @@ export const useDocumentAnalysis = () => {
     setPdfUrl(null);
     
     try {
-      // Get content of selected documents
-      const documentsWithContent = [];
-      for (const docId of selectedDocuments) {
-        const doc = await getDocumentById(docId);
-        if (doc && doc.content) {
-          documentsWithContent.push({
-            id: doc.id,
-            content: doc.content
-          });
-        }
+      const sessionId = await getSessionId();
+      if (!sessionId) {
+        throw new Error('Ingen session tillgänglig');
       }
+
+      // Determine analysis type based on number of documents
+      const analysisType = selectedDocuments.length === 1 ? 'single_document' : 'comparative';
       
-      // Create analysis record
-      const analysisId = await createAnalysis(selectedDocuments);
+      console.log('Starting legal analysis for documents:', selectedDocuments);
       
-      if (!analysisId) {
-        throw new Error('Kunde inte skapa analys');
+      // Perform AI-powered legal analysis
+      const analysisResult = await performLegalAnalysis({
+        documentIds: selectedDocuments,
+        sessionId,
+        analysisType
+      });
+      
+      if (!analysisResult) {
+        throw new Error('Kunde inte genomföra juridisk analys');
       }
-      
-      // Generate counterarguments
-      const analysisResults = await generateCounterarguments(documentsWithContent);
-      
-      if (!analysisResults) {
-        throw new Error('Kunde inte generera motargument');
-      }
-      
-      // Update analysis with results
-      await updateAnalysisResults(analysisId, analysisResults);
       
       // Set results
-      setResults(analysisResults);
+      setResults(analysisResult.analysis);
       
       // Generate PDF
-      const pdfDataUrl = generatePdfReport(analysisResults);
+      const pdfDataUrl = generatePdfReport(analysisResult.analysis);
       setPdfUrl(pdfDataUrl);
       
       toast({
-        title: "Analys klar",
-        description: "Analysen har slutförts framgångsrikt.",
+        title: "Juridisk analys klar",
+        description: "AI-analys med svensk rättslig kontext har slutförts framgångsrikt.",
       });
       
-      return analysisResults;
+      return analysisResult.analysis;
     } catch (error) {
       console.error('Analysis error:', error);
       toast({
         title: "Analysfel",
-        description: "Ett fel uppstod under analysen. Försök igen senare.",
+        description: "Ett fel uppstod under den juridiska analysen. Försök igen senare.",
         variant: "destructive",
       });
       return null;

@@ -9,6 +9,101 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      ai_analyses: {
+        Row: {
+          analysis_results: Json
+          analysis_type: string
+          confidence_metrics: Json | null
+          created_at: string
+          document_ids: string[]
+          id: string
+          legal_area: string | null
+          legal_references: Json | null
+          next_steps: Json | null
+          processing_time_ms: number | null
+          session_id: string
+          strength_assessment: Json | null
+        }
+        Insert: {
+          analysis_results: Json
+          analysis_type: string
+          confidence_metrics?: Json | null
+          created_at?: string
+          document_ids: string[]
+          id?: string
+          legal_area?: string | null
+          legal_references?: Json | null
+          next_steps?: Json | null
+          processing_time_ms?: number | null
+          session_id: string
+          strength_assessment?: Json | null
+        }
+        Update: {
+          analysis_results?: Json
+          analysis_type?: string
+          confidence_metrics?: Json | null
+          created_at?: string
+          document_ids?: string[]
+          id?: string
+          legal_area?: string | null
+          legal_references?: Json | null
+          next_steps?: Json | null
+          processing_time_ms?: number | null
+          session_id?: string
+          strength_assessment?: Json | null
+        }
+        Relationships: []
+      }
+      document_classifications: {
+        Row: {
+          classification_metadata: Json | null
+          complexity_score: number | null
+          confidence_score: number | null
+          created_at: string
+          detected_claims: string[] | null
+          document_id: string
+          document_type: string
+          id: string
+          key_entities: Json | null
+          legal_area: string | null
+          urgency_level: number | null
+        }
+        Insert: {
+          classification_metadata?: Json | null
+          complexity_score?: number | null
+          confidence_score?: number | null
+          created_at?: string
+          detected_claims?: string[] | null
+          document_id: string
+          document_type: string
+          id?: string
+          key_entities?: Json | null
+          legal_area?: string | null
+          urgency_level?: number | null
+        }
+        Update: {
+          classification_metadata?: Json | null
+          complexity_score?: number | null
+          confidence_score?: number | null
+          created_at?: string
+          detected_claims?: string[] | null
+          document_id?: string
+          document_type?: string
+          id?: string
+          key_entities?: Json | null
+          legal_area?: string | null
+          urgency_level?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_classifications_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       documents: {
         Row: {
           analysis_mode: string | null
@@ -55,6 +150,156 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      legal_concepts: {
+        Row: {
+          category: string
+          concept_name: string
+          created_at: string
+          description: string | null
+          id: string
+          sfs_reference: string | null
+          subcategory: string | null
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          concept_name: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          sfs_reference?: string | null
+          subcategory?: string | null
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          concept_name?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          sfs_reference?: string | null
+          subcategory?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      legal_precedents: {
+        Row: {
+          case_reference: string
+          court_level: string
+          created_at: string
+          decision_date: string | null
+          full_text: string | null
+          id: string
+          legal_principle: string | null
+          relevant_concepts: string[] | null
+          summary: string
+        }
+        Insert: {
+          case_reference: string
+          court_level: string
+          created_at?: string
+          decision_date?: string | null
+          full_text?: string | null
+          id?: string
+          legal_principle?: string | null
+          relevant_concepts?: string[] | null
+          summary: string
+        }
+        Update: {
+          case_reference?: string
+          court_level?: string
+          created_at?: string
+          decision_date?: string | null
+          full_text?: string | null
+          id?: string
+          legal_principle?: string | null
+          relevant_concepts?: string[] | null
+          summary?: string
+        }
+        Relationships: []
+      }
+      legal_prompts: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean | null
+          legal_area: string
+          prompt_name: string
+          prompt_template: string
+          prompt_type: string
+          system_context: string | null
+          updated_at: string
+          variables: Json | null
+          version: number | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          legal_area: string
+          prompt_name: string
+          prompt_template: string
+          prompt_type: string
+          system_context?: string | null
+          updated_at?: string
+          variables?: Json | null
+          version?: number | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          legal_area?: string
+          prompt_name?: string
+          prompt_template?: string
+          prompt_type?: string
+          system_context?: string | null
+          updated_at?: string
+          variables?: Json | null
+          version?: number | null
+        }
+        Relationships: []
+      }
+      legal_updates: {
+        Row: {
+          affected_areas: string[] | null
+          created_at: string
+          description: string | null
+          effective_date: string | null
+          id: string
+          impact_level: string | null
+          processed: boolean | null
+          source_url: string | null
+          title: string
+          update_type: string
+        }
+        Insert: {
+          affected_areas?: string[] | null
+          created_at?: string
+          description?: string | null
+          effective_date?: string | null
+          id?: string
+          impact_level?: string | null
+          processed?: boolean | null
+          source_url?: string | null
+          title: string
+          update_type: string
+        }
+        Update: {
+          affected_areas?: string[] | null
+          created_at?: string
+          description?: string | null
+          effective_date?: string | null
+          id?: string
+          impact_level?: string | null
+          processed?: boolean | null
+          source_url?: string | null
+          title?: string
+          update_type?: string
+        }
+        Relationships: []
       }
       sessions: {
         Row: {

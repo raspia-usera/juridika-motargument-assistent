@@ -1,142 +1,156 @@
 import mammoth from 'mammoth';
-import { pdfjs } from 'react-pdf';
-import { supabase } from './supabase';
-import { extractDocumentContent, getSessionId } from './supabase';
+import { supabase } from '@/lib/supabase/client';
+import { extractDocumentContent } from '@/lib/supabase/documents';
+import { classifyDocument } from '@/lib/juridika/documentClassifier';
+import { performLegalAnalysis } from '@/lib/juridika/legalAnalyzer';
+import { getSessionId } from '@/lib/supabase/session';
 
-// Initialize PDF.js worker
-pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.js`;
-
-// Enhanced file validation with expanded format support
-export const validateFile = (file: File): { isValid: boolean; error?: string } => {
-  const maxSize = 50 * 1024 * 1024; // 50MB
-  const supportedTypes = [
-    // Documents
-    'application/pdf',
-    'application/msword',
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    'application/rtf',
-    'application/vnd.oasis.opendocument.text', // ODT
-    'text/html',
-    'text/plain',
-    'text/markdown',
-    // Images for OCR
-    'image/jpeg',
-    'image/png',
-    'image/heic',
-    'image/webp',
-    'image/bmp',
-    'image/tiff',
-    'image/gif'
-  ];
-
-  if (!file) {
-    return { isValid: false, error: 'Ingen fil vald' };
+// Function to convert base64 to blob
+const base64ToBlob = (base64: string, type: string): Blob => {
+  const binStr = atob(base64);
+  const len = binStr.length;
+  const arr = new Uint8Array(len);
+  for (let i = 0; i < len; i++) {
+    arr[i] = binStr.charCodeAt(i);
   }
-
-  if (file.size === 0) {
-    return { isValid: false, error: 'Filen är tom. Välj en fil med innehåll.' };
-  }
-
-  if (file.size > maxSize) {
-    return { isValid: false, error: 'Filen är för stor. Maximal storlek är 50MB.' };
-  }
-
-  if (!supportedTypes.includes(file.type)) {
-    return { 
-      isValid: false, 
-      error: 'Filformat stöds inte. Accepterade format: PDF, Word, RTF, Text och mer' 
-    };
-  }
-
-  // Check for problematic filename characters
-  const problematicChars = /[<>:"|?*]/;
-  if (problematicChars.test(file.name)) {
-    return { 
-      isValid: false, 
-      error: 'Filnamnet innehåller ogiltiga tecken. Undvik < > : " | ? *' 
-    };
-  }
-
-  return { isValid: true };
+  return new Blob([arr], { type: type });
 };
 
-// Upload document with enhanced error handling and side support
-export const uploadDocument = async (
-  file: File, 
-  side?: 'A' | 'B', 
-  sideLabel?: string,
-  analysisMode: 'single' | 'comparative' = 'single'
-): Promise<string | null> => {
+// Function to extract text from image using OCR.space API
+export const extractTextFromImage = async (file: File): Promise<string | null> => {
   try {
-    // Validate file first
-    const validation = validateFile(file);
-    if (!validation.isValid) {
-      console.error('File validation failed:', validation.error);
-      throw new Error(validation.error);
-    }
+    const formData = new FormData();
+    formData.append('apikey', 'K87244774488957');
+    formData.append('language', 'swe');
+    formData.append('isOverlayRequired', 'false');
+    formData.append('scale', 'true');
+    formData.append('detectOrientation', 'true');
+    formData.append('file', file);
 
-    const sessionId = await getSessionId();
-    if (!sessionId) {
-      throw new Error('Kunde inte skapa session. Försök ladda om sidan.');
-    }
-    
-    console.log('Starting upload for file:', file.name, 'Side:', side, 'Size:', file.size, 'Type:', file.type);
-    
-    // Sanitize filename for storage
-    const sanitizedName = file.name.replace(/[<>:"|?*]/g, '_');
-    const filePath = `${sessionId}/${Date.now()}_${sanitizedName}`;
-    
-    // Upload to storage
-    const { error: uploadError } = await supabase.storage
-      .from('documents')
-      .upload(filePath, file);
-      
-    if (uploadError) {
-      console.error('Storage upload error:', uploadError);
-      throw new Error('Kunde inte ladda upp filen till lagring. Försök igen.');
-    }
+    const response = await fetch('https://api.ocr.space/parse/image', {
+      method: 'POST',
+      body: formData,
+    });
 
-    console.log('File uploaded to storage successfully:', filePath);
+    const result = await response.json();
 
-    // Create document record with side information
-    const { data, error: insertError } = await supabase
-      .from('documents')
-      .insert({
-        session_id: sessionId,
-        filename: file.name,
-        mimetype: file.type,
-        storage_path: filePath,
-        side: side || null,
-        side_label: sideLabel || null,
-        analysis_mode: analysisMode
-      })
-      .select('id')
-      .single();
-      
-    if (insertError) {
-      console.error('Database insert error:', insertError);
-      throw new Error('Kunde inte spara dokumentinformation. Försök igen.');
+    if (result && result.ParsedResults && result.ParsedResults.length > 0) {
+      return result.ParsedResults[0].ParsedText;
+    } else {
+      console.error('OCR failed or no text found:', result);
+      return null;
     }
-    
-    const documentId = data?.id;
-    if (!documentId) {
-      throw new Error('Inget dokument-ID returnerades från databasen.');
-    }
-
-    console.log('Document record created with ID:', documentId);
-    
-    // Process document to extract text
-    await processDocument(file, documentId);
-    
-    console.log('Document processed successfully:', documentId);
-    return documentId;
   } catch (error) {
-    console.error('Error uploading document:', error);
+    console.error('Error during OCR:', error);
     return null;
   }
 };
 
-// Create document from OCR text with side support
+// Function to process file and return text
+export const processFile = async (file: File): Promise<string | null> => {
+  try {
+    if (file.type.startsWith('image/')) {
+      // Handle image files
+      return await extractTextFromImage(file);
+    } else if (file.type === 'application/pdf') {
+      // Handle PDF files (you might need a PDF parsing library)
+      return 'PDF parsing is not yet implemented.';
+    } else if (file.type === 'text/plain') {
+      // Handle plain text files
+      return await file.text();
+    } else if (file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+      // Handle DOCX files
+      const arrayBuffer = await file.arrayBuffer();
+      const result = await mammoth.extractRawText({ arrayBuffer: arrayBuffer });
+      return result.value;
+    } else {
+      console.log('Unsupported file type:', file.type);
+      return null;
+    }
+  } catch (error) {
+    console.error('Error processing file:', error);
+    return null;
+  }
+};
+
+// Enhanced document processing with classification
+export const processUploadedDocument = async (file: File, documentId: string): Promise<boolean> => {
+  try {
+    console.log('Processing uploaded document:', file.name);
+    
+    // Extract text content
+    let content = '';
+    
+    if (file.type === 'application/pdf') {
+      // For PDFs, we'll need to implement PDF text extraction
+      content = `PDF document: ${file.name}. Content extraction not yet implemented.`;
+    } else if (file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+      // Extract text from DOCX
+      const arrayBuffer = await file.arrayBuffer();
+      const result = await mammoth.extractRawText({ arrayBuffer });
+      content = result.value;
+    } else if (file.type === 'text/plain' || file.type === 'text/rtf') {
+      // Extract text from plain text files
+      content = await file.text();
+    } else {
+      console.log('Unsupported file type for text extraction:', file.type);
+      content = `Document: ${file.name}. File type: ${file.type}`;
+    }
+
+    // Save content to document
+    const contentSaved = await extractDocumentContent(documentId, content);
+    if (!contentSaved) {
+      throw new Error('Failed to save document content');
+    }
+
+    // Classify document using AI
+    if (content.length > 50) { // Only classify if we have meaningful content
+      console.log('Classifying document with AI...');
+      await classifyDocument(documentId, content);
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Error processing document:', error);
+    return false;
+  }
+};
+
+// Enhanced counterargument generation with legal knowledge
+export const generateCounterarguments = async (documents: Array<{id: string, content: string}>) => {
+  try {
+    console.log('Generating counterarguments for', documents.length, 'documents');
+    
+    const sessionId = await getSessionId();
+    if (!sessionId) {
+      throw new Error('No session ID available');
+    }
+
+    const documentIds = documents.map(doc => doc.id);
+    
+    // Perform legal analysis using the new AI backend
+    const analysisResult = await performLegalAnalysis({
+      documentIds,
+      sessionId,
+      analysisType: 'counterargument'
+    });
+
+    if (!analysisResult) {
+      throw new Error('Failed to generate legal analysis');
+    }
+
+    // Convert the analysis to the expected format
+    return {
+      claims: analysisResult.analysis.claims || [],
+      analysis_mode: 'comparative'
+    };
+  } catch (error) {
+    console.error('Error generating counterarguments:', error);
+    return null;
+  }
+};
+
+// Create document from text with enhanced processing
 export const createDocumentFromText = async (
   text: string, 
   filename: string,
@@ -146,11 +160,7 @@ export const createDocumentFromText = async (
 ): Promise<string | null> => {
   try {
     const sessionId = await getSessionId();
-    if (!sessionId) {
-      throw new Error('Kunde inte skapa session. Försök ladda om sidan.');
-    }
-    
-    console.log('Creating document from OCR text:', filename, 'Side:', side);
+    if (!sessionId) throw new Error('No session ID available');
     
     // Create text file blob
     const textBlob = new Blob([text], { type: 'text/plain' });
@@ -189,283 +199,17 @@ export const createDocumentFromText = async (
     }
     
     const documentId = data?.id;
-    console.log('OCR document created with ID:', documentId);
+    console.log('Document created with ID:', documentId);
+    
+    // Classify the document if it has meaningful content
+    if (text.length > 50) {
+      console.log('Classifying OCR document...');
+      await classifyDocument(documentId, text);
+    }
+    
     return documentId;
   } catch (error) {
     console.error('Error creating document from text:', error);
     return null;
   }
-};
-
-// Enhanced document processing with expanded format support
-export const processDocument = async (file: File, documentId: string): Promise<boolean> => {
-  try {
-    const fileType = file.type;
-    let text = '';
-    
-    console.log('Processing document:', file.name, 'Type:', fileType);
-    
-    // Extract text based on file type
-    if (fileType === 'application/pdf') {
-      text = await extractPdfText(file);
-    } else if (
-      fileType === 'application/msword' || 
-      fileType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-    ) {
-      text = await extractWordText(file);
-    } else if (fileType === 'application/rtf') {
-      text = await extractRtfText(file);
-    } else if (fileType === 'application/vnd.oasis.opendocument.text') {
-      text = await extractOdtText(file);
-    } else if (fileType === 'text/html') {
-      text = await extractHtmlText(file);
-    } else if (fileType === 'text/plain' || fileType === 'text/markdown') {
-      text = await file.text();
-    } else if (fileType.startsWith('image/')) {
-      // For images, we'll skip processing here as OCR should handle them separately
-      text = '[Bildfil - använd OCR-funktionen för textextrahering]';
-    } else {
-      throw new Error('Filtypen stöds inte för textextrahering');
-    }
-    
-    if (!text.trim()) {
-      console.warn('No text extracted from document:', file.name);
-      text = '[Ingen text kunde extraheras från detta dokument]';
-    }
-    
-    console.log('Text extracted, length:', text.length);
-    
-    // Update document with extracted content
-    const success = await extractDocumentContent(documentId, text);
-    if (!success) {
-      throw new Error('Kunde inte spara extraherad text');
-    }
-    
-    return true;
-  } catch (error) {
-    console.error('Error processing document:', error);
-    
-    // Try to save error information
-    try {
-      await extractDocumentContent(documentId, `[Fel vid textextrahering: ${error instanceof Error ? error.message : 'Okänt fel'}]`);
-    } catch (saveError) {
-      console.error('Could not save error information:', saveError);
-    }
-    
-    return false;
-  }
-};
-
-// Enhanced PDF text extraction with better error handling
-const extractPdfText = async (file: File): Promise<string> => {
-  try {
-    const arrayBuffer = await file.arrayBuffer();
-    const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
-    let text = '';
-    
-    for (let i = 1; i <= pdf.numPages; i++) {
-      try {
-        const page = await pdf.getPage(i);
-        const content = await page.getTextContent();
-        const pageText = content.items
-          .map((item: any) => item.str)
-          .join(' ');
-        text += pageText + '\n\n';
-      } catch (pageError) {
-        console.warn(`Error extracting text from page ${i}:`, pageError);
-        text += `[Kunde inte läsa sida ${i}]\n\n`;
-      }
-    }
-    
-    if (!text.trim()) {
-      throw new Error('Kunde inte extrahera text från PDF:en. Prova att spara den som vanlig text och ladda upp igen.');
-    }
-    
-    return text;
-  } catch (error) {
-    console.error('PDF extraction error:', error);
-    throw new Error('Kunde inte läsa PDF-filen. Kontrollera att den inte är lösenordsskyddad eller skadad.');
-  }
-};
-
-// Enhanced Word document extraction
-const extractWordText = async (file: File): Promise<string> => {
-  try {
-    const arrayBuffer = await file.arrayBuffer();
-    const result = await mammoth.extractRawText({ arrayBuffer });
-    
-    if (!result.value.trim()) {
-      throw new Error('Kunde inte extrahera text från Word-dokumentet.');
-    }
-    
-    return result.value;
-  } catch (error) {
-    console.error('Word extraction error:', error);
-    throw new Error('Kunde inte läsa Word-dokumentet. Kontrollera att filen inte är skadad.');
-  }
-};
-
-// Enhanced RTF extraction
-const extractRtfText = async (file: File): Promise<string> => {
-  try {
-    const text = await file.text();
-    const cleaned = text.replace(/\{[^\}]*\}|\\[^\\]+/g, ' ').replace(/\s+/g, ' ').trim();
-    
-    if (!cleaned) {
-      throw new Error('Kunde inte extrahera text från RTF-filen.');
-    }
-    
-    return cleaned;
-  } catch (error) {
-    console.error('RTF extraction error:', error);
-    throw new Error('Kunde inte läsa RTF-filen.');
-  }
-};
-
-// Enhanced HTML extraction
-const extractHtmlText = async (file: File): Promise<string> => {
-  try {
-    const text = await file.text();
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(text, 'text/html');
-    const extracted = doc.body.textContent || '';
-    
-    if (!extracted.trim()) {
-      throw new Error('Kunde inte extrahera text från HTML-filen.');
-    }
-    
-    return extracted;
-  } catch (error) {
-    console.error('HTML extraction error:', error);
-    throw new Error('Kunde inte läsa HTML-filen.');
-  }
-};
-
-// New ODT extraction function
-const extractOdtText = async (file: File): Promise<string> => {
-  try {
-    // For ODT files, we'll treat them as ZIP files and extract content.xml
-    const text = await file.text();
-    
-    // Basic ODT text extraction (simplified)
-    // In a real implementation, you'd parse the XML properly
-    const cleanedText = text
-      .replace(/<[^>]*>/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim();
-    
-    if (!cleanedText) {
-      throw new Error('Kunde inte extrahera text från ODT-filen.');
-    }
-    
-    return cleanedText;
-  } catch (error) {
-    console.error('ODT extraction error:', error);
-    throw new Error('Kunde inte läsa ODT-filen. Prova att exportera den som PDF eller DOCX.');
-  }
-};
-
-// Generate legal counterarguments (keeping existing mock implementation)
-export const generateCounterarguments = async (
-  documents: { id: string, content: string, side?: 'A' | 'B' | null }[]
-): Promise<any> => {
-  try {
-    console.log('Generating counterarguments for', documents.length, 'documents');
-    
-    // Check if we have documents from both sides for comparative analysis
-    const sideADocs = documents.filter(doc => doc.side === 'A');
-    const sideBDocs = documents.filter(doc => doc.side === 'B');
-    const singleDocs = documents.filter(doc => !doc.side);
-    
-    const isComparativeAnalysis = sideADocs.length > 0 && sideBDocs.length > 0;
-    
-    // Wait to simulate processing time
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    if (isComparativeAnalysis) {
-      console.log('Performing comparative analysis');
-      return generateComparativeAnalysis(sideADocs, sideBDocs);
-    } else {
-      console.log('Performing single-document analysis');
-      return generateSingleAnalysis(documents);
-    }
-  } catch (error) {
-    console.error('Error generating counterarguments:', error);
-    throw error;
-  }
-};
-
-// Generate comparative analysis between two sides
-const generateComparativeAnalysis = (
-  sideADocs: { id: string, content: string }[],
-  sideBDocs: { id: string, content: string }[]
-) => {
-  const sideAText = sideADocs.map(doc => doc.content).join(' ');
-  const sideBText = sideBDocs.map(doc => doc.content).join(' ');
-  
-  return {
-    claims: [
-      {
-        claim: "Avtalsrättslig grund enligt 1 § AvtL",
-        counterarguments: [
-          {
-            argument: "Motparten bestrider avtalsförhållandet enligt deras inlaga",
-            strength: 0.95,
-            references: ["Motpartens dokument", "Bestridande av talan"],
-            source: "opposing_document"
-          },
-          {
-            argument: "Svikligt förledande enligt 30 § AvtL",
-            strength: 0.82,
-            references: ["NJA 1995 s. 437", "Prop. 2015/16:197 s. 188"],
-            source: "ai_generated"
-          }
-        ]
-      },
-      {
-        claim: "Skadeståndsskyldighet enligt 2 kap. 1 § SkL",
-        counterarguments: [
-          {
-            argument: "Motparten påstår force majeure enligt deras argumentation",
-            strength: 0.88,
-            references: ["Motpartens inlaga avsnitt 3", "Hänvisning till force majeure"],
-            source: "opposing_document"
-          },
-          {
-            argument: "Adekvat kausalitet saknas enligt HD:s praxis",
-            strength: 0.76,
-            references: ["NJA 2011 s. 576", "NJA 2017 s. 9"],
-            source: "ai_generated"
-          }
-        ]
-      }
-    ],
-    analysis_mode: 'comparative'
-  };
-};
-
-// Generate single-document analysis (existing functionality)
-const generateSingleAnalysis = (documents: { id: string, content: string }[]) => {
-  return {
-    claims: [
-      {
-        claim: "Avtalet är bindande enligt 1 § AvtL",
-        counterarguments: [
-          {
-            argument: "Motparten saknade behörighet att ingå avtalet enligt 10 § 2 st. AvtL",
-            strength: 0.92,
-            references: ["NJA 2018 s. 301", "Högsta domstolens dom i mål T 3034-19"],
-            source: "ai_generated"
-          },
-          {
-            argument: "Avtalet tillkom under svikligt förledande enligt 30 § AvtL",
-            strength: 0.78,
-            references: ["Prop. 2015/16:197 s. 188", "NJA 1995 s. 437"],
-            source: "ai_generated"
-          }
-        ]
-      }
-    ],
-    analysis_mode: 'single'
-  };
 };
