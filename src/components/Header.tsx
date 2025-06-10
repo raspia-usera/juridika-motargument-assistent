@@ -1,12 +1,12 @@
-import React from 'react';
+
+import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Home, Upload, FileText, Scale, Menu, X } from 'lucide-react';
-import { useDisclosure } from '@mantine/hooks';
 
 const Header = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const [opened, { open, close }] = useDisclosure(false);
+  const [opened, setOpened] = useState(false);
 
   const navItems = [
     { path: '/', label: 'Hem', icon: Home },
@@ -17,8 +17,11 @@ const Header = () => {
 
   const handleNavigation = (path: string) => {
     navigate(path);
-    close();
+    setOpened(false);
   };
+
+  const openMenu = () => setOpened(true);
+  const closeMenu = () => setOpened(false);
 
   return (
     <header className="bg-white shadow-sm border-b border-juridika-lightgray sticky top-0 z-50">
@@ -60,7 +63,7 @@ const Header = () => {
 
         {/* Mobile Navigation Button */}
         <button
-          onClick={open}
+          onClick={openMenu}
           className="md:hidden text-juridika-charcoal focus:outline-none"
         >
           <Menu className="h-6 w-6" />
@@ -71,7 +74,7 @@ const Header = () => {
           <div className="fixed top-0 left-0 w-full h-full bg-white z-50 p-4 md:hidden">
             {/* Close Button */}
             <div className="flex justify-end">
-              <button onClick={close} className="text-juridika-charcoal focus:outline-none">
+              <button onClick={closeMenu} className="text-juridika-charcoal focus:outline-none">
                 <X className="h-6 w-6" />
               </button>
             </div>

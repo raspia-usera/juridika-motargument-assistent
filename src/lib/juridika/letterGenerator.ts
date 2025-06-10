@@ -115,17 +115,29 @@ ${userDetails?.name || '[DITT NAMN]'}`,
       return null;
     }
 
-    // Store generated letter in database
-    const { data, error } = await supabase
-      .from('letters')
-      .insert({
-        session_id: 'public-session',
-        letter_type: letterType,
+    // Store generated letter in ai_analyses table instead of non-existent letters table
+    const letterData = {
+      session_id: 'public-session',
+      document_ids: [],
+      analysis_type: 'legal_letter_generation',
+      legal_area: 'brevgenerering',
+      analysis_results: {
+        letterType: letterType,
         title: template.title,
         content: template.content,
-        legal_basis: template.legalBasis,
-        status: 'draft'
-      })
+        legalBasis: template.legalBasis,
+        requiredFields: template.requiredFields,
+        userDetails: userDetails || {},
+        context: context
+      } as any,
+      confidence_metrics: {
+        generation_confidence: 0.9
+      } as any
+    };
+
+    const { data, error } = await supabase
+      .from('ai_analyses')
+      .insert(letterData)
       .select()
       .single();
 

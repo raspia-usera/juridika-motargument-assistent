@@ -40,24 +40,34 @@ export const useEnhancedDocumentAnalysis = () => {
       );
       setLegalResources(resources);
 
-      // 4. Store comprehensive analysis in ai_analyses table
+      // 4. Store comprehensive analysis in ai_analyses table with proper type conversion
+      const analysisData = {
+        session_id: 'public-session',
+        document_ids: [documentId],
+        analysis_type: 'enhanced_swedish_legal',
+        legal_area: legalAnalysis?.legalAreas?.[0] || 'allmän juridik',
+        analysis_results: {
+          ...(legalAnalysis || {}),
+          detectedConcepts: concepts,
+          legalResources: resources.map(r => ({
+            source: r.source,
+            type: r.type,
+            title: r.title,
+            description: r.description,
+            reference: r.reference || null,
+            url: r.url || null,
+            relevance: r.relevance
+          }))
+        } as any,
+        confidence_metrics: {
+          analysis_confidence: legalAnalysis?.confidence || 0.5,
+          concept_detection_confidence: concepts.length > 0 ? 0.8 : 0.3
+        } as any
+      };
+
       const { data: analysisRecord, error: analysisError } = await supabase
         .from('ai_analyses')
-        .insert({
-          session_id: 'public-session',
-          document_ids: [documentId],
-          analysis_type: 'enhanced_swedish_legal',
-          legal_area: legalAnalysis?.legalAreas?.[0] || 'allmän juridik',
-          analysis_results: {
-            ...legalAnalysis,
-            detectedConcepts: concepts,
-            legalResources: resources
-          },
-          confidence_metrics: {
-            analysis_confidence: legalAnalysis?.confidence || 0.5,
-            concept_detection_confidence: concepts.length > 0 ? 0.8 : 0.3
-          }
-        })
+        .insert(analysisData)
         .select()
         .single();
 
@@ -67,29 +77,31 @@ export const useEnhancedDocumentAnalysis = () => {
 
       // 5. Update document classification if analysis was successful
       if (legalAnalysis && analysisRecord) {
+        const classificationData = {
+          document_id: documentId,
+          document_type: legalAnalysis.legalAreas?.[0] || 'juridiskt dokument',
+          legal_area: legalAnalysis.legalAreas?.[0] || 'allmän juridik',
+          urgency_level: legalAnalysis.riskAssessment?.level === 'high' ? 3 : 
+                        legalAnalysis.riskAssessment?.level === 'medium' ? 2 : 1,
+          complexity_score: Math.min(Math.max(Math.floor(content.length / 500), 1), 5),
+          confidence_score: legalAnalysis.confidence,
+          detected_claims: [
+            ...legalAnalysis.keyArguments.for,
+            ...legalAnalysis.keyArguments.against
+          ],
+          key_entities: {
+            legalConcepts: concepts,
+            relevantLaws: legalAnalysis.relevantLaws.map(law => law.law)
+          } as any,
+          classification_metadata: {
+            analysisId: analysisRecord.id,
+            processingDate: new Date().toISOString()
+          } as any
+        };
+
         const { error: classificationError } = await supabase
           .from('document_classifications')
-          .upsert({
-            document_id: documentId,
-            document_type: legalAnalysis.legalAreas?.[0] || 'juridiskt dokument',
-            legal_area: legalAnalysis.legalAreas?.[0] || 'allmän juridik',
-            urgency_level: legalAnalysis.riskAssessment?.level === 'high' ? 3 : 
-                          legalAnalysis.riskAssessment?.level === 'medium' ? 2 : 1,
-            complexity_score: Math.min(Math.max(Math.floor(content.length / 500), 1), 5),
-            confidence_score: legalAnalysis.confidence,
-            detected_claims: [
-              ...legalAnalysis.keyArguments.for,
-              ...legalAnalysis.keyArguments.against
-            ],
-            key_entities: {
-              legalConcepts: concepts,
-              relevantLaws: legalAnalysis.relevantLaws.map(law => law.law)
-            },
-            classification_metadata: {
-              analysisId: analysisRecord.id,
-              processingDate: new Date().toISOString()
-            }
-          }, {
+          .upsert(classificationData, {
             onConflict: 'document_id'
           });
 

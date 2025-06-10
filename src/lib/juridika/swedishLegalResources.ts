@@ -115,17 +115,25 @@ export const generateLegalReasoningEngine = async (
       legalResources: resources
     };
 
-    // Store analysis in ai_analyses table
+    // Store analysis in ai_analyses table with proper type conversion
+    const analysisData = {
+      session_id: 'public-session',
+      document_ids: [],
+      analysis_type: 'legal_reasoning',
+      legal_area: 'allmän juridik',
+      analysis_results: {
+        question: question,
+        context: context || '',
+        reasoning: reasoning
+      } as any,
+      confidence_metrics: { 
+        reasoning_confidence: 0.75 
+      } as any
+    };
+
     const { error } = await supabase
       .from('ai_analyses')
-      .insert({
-        session_id: 'public-session',
-        document_ids: [],
-        analysis_type: 'legal_reasoning',
-        legal_area: 'allmän juridik',
-        analysis_results: reasoning,
-        confidence_metrics: { reasoning_confidence: 0.75 }
-      });
+      .insert(analysisData);
 
     if (error) {
       console.error('Error storing legal reasoning:', error);
